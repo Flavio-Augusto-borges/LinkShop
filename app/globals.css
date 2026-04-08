@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-sand text-ink antialiased;
+  background-image:
+    radial-gradient(circle at top left, rgba(255, 107, 61, 0.12), transparent 24%),
+    radial-gradient(circle at top right, rgba(15, 118, 110, 0.14), transparent 28%),
+    linear-gradient(180deg, #fcfbf8 0%, #f5f1ea 100%);
+}
+
+::selection {
+  @apply bg-coral/20 text-ink;
+}
+
+.page-shell {
+  @apply mx-auto w-[min(100%-1.5rem,80rem)] pb-16 pt-4 md:w-[min(100%-2rem,80rem)] md:pt-6;
+}
+
+.glass-panel {
+  @apply rounded-[2rem] border border-white/60 bg-white/75 shadow-glow backdrop-blur;
+}
+
+.section-shell {
+  @apply glass-panel mt-6 p-5 md:p-7;
+}
+
+.number-input {
+  appearance: textfield;
+}
+
+.number-input::-webkit-outer-spin-button,
+.number-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

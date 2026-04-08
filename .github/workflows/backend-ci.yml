@@ -1,0 +1,68 @@
+name: Backend CI
+
+on:
+  push:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: linkshop_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d linkshop_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/linkshop_ci
+      APP_NAME: LinkShop API
+      APP_ENV: test
+      APP_DEBUG: "false"
+      AUTH_SECRET_KEY: ci-secret-key
+      CORS_ORIGINS: http://localhost:3000
+      ALERT_PRICE_DROP_THRESHOLD_PERCENTAGE: "1.0"
+      LOG_LEVEL: INFO
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Compile backend code
+        run: python -m compileall backend/app backend/tests
+
+      - name: Run migrations
+        run: alembic -c backend/alembic.ini upgrade head
+
+      - name: Run seed
+        run: python backend/seed.py
+
+      - name: Run tests
+        run: pytest backend/tests

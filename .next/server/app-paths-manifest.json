@@ -1,0 +1,14 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/redirect/[offerId]/route": "app/api/redirect/[offerId]/route.js",
+  "/sitemap.xml/route": "app/sitemap.xml/route.js",
+  "/robots.txt/route": "app/robots.txt/route.js",
+  "/buscar/page": "app/buscar/page.js",
+  "/admin/page": "app/admin/page.js",
+  "/conta/page": "app/conta/page.js",
+  "/lista/page": "app/lista/page.js",
+  "/favoritos/page": "app/favoritos/page.js",
+  "/ofertas/[slug]/page": "app/ofertas/[slug]/page.js",
+  "/auth/page": "app/auth/page.js",
+  "/page": "app/page.js"
+}

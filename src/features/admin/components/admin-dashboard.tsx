@@ -1,0 +1,177 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+
+import { AdminEventsPanel } from "@/features/admin/components/admin-events-panel";
+import { AdminHealthPanel } from "@/features/admin/components/admin-health-panel";
+import { AdminOperationsPanel } from "@/features/admin/components/admin-operations-panel";
+import { AdminProductTable } from "@/features/admin/components/admin-product-table";
+import { AdminRankingDiagnosticsPanel } from "@/features/admin/components/admin-ranking-diagnostics-panel";
+import { AdminRankingPanel } from "@/features/admin/components/admin-ranking-panel";
+import { AdminSummaryCards } from "@/features/admin/components/admin-summary-cards";
+import { ProductForm } from "@/features/admin/components/product-form";
+import type { AdminDashboardData } from "@/features/admin/types/admin.types";
+import type { CatalogSearchResult } from "@/features/catalog/types/catalog.types";
+import { useCatalogStore } from "@/stores";
+import { SectionHeading } from "@/shared/ui/section-heading";
+
+type AdminDashboardProps = {
+  initialCatalog: CatalogSearchResult;
+  initialDashboard: AdminDashboardData;
+};
+
+export function AdminDashboard({ initialCatalog, initialDashboard }: AdminDashboardProps) {
+  const items = useCatalogStore((state) => state.items);
+  const initialized = useCatalogStore((state) => state.initialized);
+  const initializeCatalog = useCatalogStore((state) => state.initializeCatalog);
+  const upsertCatalogItem = useCatalogStore((state) => state.upsertCatalogItem);
+  const removeCatalogItem = useCatalogStore((state) => state.removeCatalogItem);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!initialized) {
+      initializeCatalog({
+        items: initialCatalog.items,
+        availableCategories: initialCatalog.availableCategories,
+        total: initialCatalog.total
+      });
+    }
+  }, [initialCatalog, initializeCatalog, initialized]);
+
+  const editingItem = useMemo(
+    () => items.find((item) => item.product.id === editingProductId) ?? null,
+    [editingProductId, items]
+  );
+
+  const sortedItems = useMemo(
+    () => [...items].sort((first, second) => first.product.name.localeCompare(second.product.name, "pt-BR")),
+    [items]
+  );
+
+  const analyticsUnavailable = !initialDashboard.clickAnalytics || !initialDashboard.alertAnalytics;
+
+  const summaryItems = useMemo(
+    () => [
+      {
+        label: "Cliques",
+        value: String(initialDashboard.clickAnalytics?.totalClicks ?? 0),
+        hint: "Total de cliques afiliados registrados no periodo observado."
+      },
+      {
+        label: "Produto lider",
+        value: initialDashboard.clickAnalytics?.topProducts[0]?.label ?? "-",
+        hint: "Produto com maior volume recente de interesse."
+      },
+      {
+        label: "Alertas",
+        value: String(initialDashboard.alertAnalytics?.totalAlerts ?? 0),
+        hint: "Alertas disparados pela engine no periodo observado."
+      },
+      {
+        label: "Motivo lider",
+        value: initialDashboard.alertAnalytics?.alertsByReason[0]?.source.replaceAll("_", " ") ?? "-",
+        hint: "Motivo de alerta mais recorrente no ambiente."
+      }
+    ],
+    [initialDashboard.alertAnalytics, initialDashboard.clickAnalytics]
+  );
+
+  return (
+    <section className="section-shell">
+      <SectionHeading
+        eyebrow="Admin"
+        title="Operacao interna e gestao inicial do produto"
+        description="A area admin centraliza observabilidade funcional do comparador e mantem a gestao de catalogo na mesma feature."
+      />
+
+      <AdminSummaryCards items={summaryItems} />
+
+      {analyticsUnavailable ? (
+        <div className="mt-6 rounded-[1.75rem] border border-dashed border-black/10 bg-black/5 px-6 py-5 text-sm leading-6 text-neutral-600">
+          Os endpoints internos de analytics nao responderam neste ambiente. Health e readiness continuam visiveis, e o restante
+          da area admin segue funcional para uso interno basico.
+        </div>
+      ) : null}
+
+      <div className="mt-6 grid gap-6 xl:grid-cols-2">
+        <AdminHealthPanel
+          title="Liveness"
+          description="Verificacao rapida para confirmar que a API esta respondendo."
+          status={initialDashboard.health}
+        />
+        <AdminHealthPanel
+          title="Readiness"
+          description="Estado de prontidao do backend com banco e dependencias minimas."
+          status={initialDashboard.readiness}
+        />
+      </div>
+
+      <div className="mt-6">
+        <AdminOperationsPanel summary={initialDashboard.operations} />
+      </div>
+
+      <div className="mt-6 grid gap-6 xl:grid-cols-2">
+        <AdminRankingPanel
+          title="Produtos mais clicados"
+          description="Itens com maior volume recente de interesse."
+          items={initialDashboard.clickAnalytics?.topProducts ?? []}
+        />
+        <AdminRankingPanel
+          title="Lojas mais clicadas"
+          description="Marketplaces que mais receberam cliques afiliados."
+          items={initialDashboard.clickAnalytics?.topStores ?? []}
+        />
+        <AdminRankingPanel
+          title="Alertas por motivo"
+          description="Motivos mais frequentes de disparo da engine."
+          items={initialDashboard.alertAnalytics?.alertsByReason ?? []}
+        />
+        <AdminRankingPanel
+          title="Produtos com mais alertas"
+          description="Itens que mais acionaram acompanhamento recentemente."
+          items={initialDashboard.alertAnalytics?.topProducts ?? []}
+        />
+      </div>
+
+      <div className="mt-6 grid gap-6 xl:grid-cols-2">
+        <AdminEventsPanel
+          title="Cliques recentes"
+          description="Ultimos eventos de clique afiliado registrados no backend."
+          items={initialDashboard.recentClickEvents}
+          type="clicks"
+        />
+        <AdminEventsPanel
+          title="Alertas recentes"
+          description="Ultimos eventos disparados pela avaliacao de alertas."
+          items={initialDashboard.recentAlertEvents}
+          type="alerts"
+        />
+      </div>
+
+      <div className="mt-6">
+        <AdminRankingDiagnosticsPanel items={initialDashboard.rankingDiagnostics} />
+      </div>
+
+      <div className="mt-10 grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
+        <ProductForm
+          item={editingItem}
+          onSave={(item) => {
+            upsertCatalogItem(item);
+            setEditingProductId(null);
+          }}
+          onCancel={() => setEditingProductId(null)}
+        />
+        <AdminProductTable
+          items={sortedItems}
+          onEdit={(item) => setEditingProductId(item.product.id)}
+          onDelete={(productId) => {
+            removeCatalogItem(productId);
+            if (editingProductId === productId) {
+              setEditingProductId(null);
+            }
+          }}
+        />
+      </div>
+    </section>
+  );
+}

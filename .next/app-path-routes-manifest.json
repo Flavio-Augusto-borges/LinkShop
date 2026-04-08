@@ -1,0 +1,14 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/api/redirect/[offerId]/route": "/api/redirect/[offerId]",
+  "/sitemap.xml/route": "/sitemap.xml",
+  "/robots.txt/route": "/robots.txt",
+  "/buscar/page": "/buscar",
+  "/admin/page": "/admin",
+  "/conta/page": "/conta",
+  "/lista/page": "/lista",
+  "/favoritos/page": "/favoritos",
+  "/ofertas/[slug]/page": "/ofertas/[slug]",
+  "/auth/page": "/auth",
+  "/page": "/"
+}

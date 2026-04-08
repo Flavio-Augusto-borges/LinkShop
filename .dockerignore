@@ -1,0 +1,17 @@
+node_modules
+.next
+dist
+coverage
+*.log
+*.pyc
+__pycache__
+.pytest_cache
+.mypy_cache
+
+backend/.venv
+backend/__pycache__
+backend/app/__pycache__
+backend/tests/__pycache__
+
+.git
+.gitignore

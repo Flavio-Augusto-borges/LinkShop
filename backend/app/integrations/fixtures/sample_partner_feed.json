@@ -1,0 +1,42 @@
+{
+  "provider": "json-feed",
+  "warnings": [
+    "Feed de exemplo para desenvolvimento local e validacao operacional."
+  ],
+  "offers": [
+    {
+      "product_id": "product-iphone-15-128",
+      "store_code": "amazon",
+      "external_offer_id": "iphone15-amz-json",
+      "seller_name": "Amazon Brasil",
+      "title": "Apple iPhone 15 128GB - Feed JSON",
+      "affiliate_url": "https://www.amazon.com.br/",
+      "landing_url": "https://www.amazon.com.br/",
+      "price": "4399.00",
+      "original_price": "4699.00",
+      "currency": "BRL",
+      "shipping_cost": "0.00",
+      "installment_text": "10x sem juros",
+      "availability": "in_stock",
+      "is_featured": true,
+      "is_active": true
+    },
+    {
+      "product_id": "product-galaxy-s24-256",
+      "store_code": "shopee",
+      "external_offer_id": "galaxys24-shp-json",
+      "seller_name": "Samsung Oficial",
+      "title": "Galaxy S24 256GB Samsung - Feed JSON",
+      "affiliate_url": "https://shopee.com.br/",
+      "landing_url": "https://shopee.com.br/",
+      "price": "3499.00",
+      "original_price": "3899.00",
+      "currency": "BRL",
+      "shipping_cost": "9.90",
+      "installment_text": "Parcelamento via cartao",
+      "availability": "low_stock",
+      "is_featured": false,
+      "is_active": true
+    }
+  ]
+}

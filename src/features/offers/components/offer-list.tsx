@@ -1,0 +1,106 @@
+import type { Offer } from "@/features/product/types/offer.types";
+import { calculateDiscountPercentage } from "@/shared/lib/commerce";
+import { formatCurrency } from "@/shared/lib/format";
+import { getOfferRedirectHref } from "@/shared/lib/redirect";
+import { getAvailabilityLabel, getStoreDisplayName } from "@/shared/lib/store";
+
+type OfferListProps = {
+  offers: Offer[];
+  bestOfferId?: string;
+};
+
+export function OfferList({ offers, bestOfferId }: OfferListProps) {
+  const lowestPrice = offers.length ? Math.min(...offers.map((offer) => offer.price)) : null;
+  const orderedOffers = [...offers].sort((first, second) => {
+    if (first.id === bestOfferId) {
+      return -1;
+    }
+
+    if (second.id === bestOfferId) {
+      return 1;
+    }
+
+      return first.price - second.price;
+  });
+
+  return (
+    <div className="grid gap-4">
+      {orderedOffers.map((offer, index) => {
+        const isBestOffer = offer.id === bestOfferId;
+        const isLowestPrice = lowestPrice !== null && offer.price === lowestPrice;
+        const discount = calculateDiscountPercentage(offer.price, offer.originalPrice);
+
+        return (
+          <article
+            key={offer.id}
+            className={`rounded-[1.5rem] border p-5 transition ${
+              isBestOffer ? "border-coral bg-coral/5 shadow-glow" : "border-black/5 bg-white"
+            }`}
+          >
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
+                  <span className="rounded-full bg-lagoon/10 px-3 py-1 text-lagoon">{getStoreDisplayName(offer.storeId)}</span>
+                  {isBestOffer ? (
+                    <span className="rounded-full bg-coral px-3 py-1 text-white">Melhor oferta</span>
+                  ) : (
+                    <span className="rounded-full bg-black/5 px-3 py-1 text-neutral-600">Opcao #{index + 1}</span>
+                  )}
+                  {isLowestPrice ? (
+                    <span className="rounded-full bg-lagoon/10 px-3 py-1 text-lagoon">Menor preco</span>
+                  ) : null}
+                  {discount > 0 ? (
+                    <span className="rounded-full bg-gold px-3 py-1 text-ink">{discount}% OFF</span>
+                  ) : null}
+                  <span className="rounded-full bg-black/5 px-3 py-1 text-neutral-600">
+                    {getAvailabilityLabel(offer.availability)}
+                  </span>
+                </div>
+
+                <div>
+                  <h3 className="font-display text-2xl">{offer.title}</h3>
+                  <p className="mt-1 text-sm text-neutral-500">Vendido por {offer.sellerName}</p>
+                </div>
+
+                <div className="grid gap-1 text-sm text-neutral-500">
+                  <span>{offer.installmentText ?? "Pagamento a vista"}</span>
+                  <span>Frete: {offer.shippingCost ? formatCurrency(offer.shippingCost) : "Consultar na loja"}</span>
+                  {offer.rankingReason ? <span>{offer.rankingReason}</span> : null}
+                </div>
+              </div>
+
+              <div className="grid gap-3 md:min-w-[240px] md:justify-items-end">
+                <div className="text-right">
+                  <div className="flex items-end justify-end gap-3">
+                    <strong className="font-display text-3xl">{formatCurrency(offer.price)}</strong>
+                    {offer.originalPrice ? (
+                      <span className="text-sm text-neutral-400 line-through">{formatCurrency(offer.originalPrice)}</span>
+                    ) : null}
+                  </div>
+                  <p className="mt-2 text-sm text-neutral-500">
+                    {isBestOffer
+                      ? "Oferta escolhida pelo ranking de qualidade."
+                      : isLowestPrice
+                        ? "Este e o menor preco bruto atual."
+                        : "Compare antes de sair para a loja."}
+                  </p>
+                </div>
+
+                <a
+                  href={getOfferRedirectHref(offer)}
+                  target="_blank"
+                  rel="noreferrer noopener sponsored"
+                  className={`inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition ${
+                    isBestOffer ? "bg-coral text-white hover:bg-orange-600" : "bg-ink text-white hover:bg-neutral-800"
+                  }`}
+                >
+                  {isBestOffer ? `Ir para ${getStoreDisplayName(offer.storeId)}` : "Ver oferta na loja"}
+                </a>
+              </div>
+            </div>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
