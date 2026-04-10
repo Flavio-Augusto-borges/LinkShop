@@ -225,30 +225,28 @@ export const catalogService = {
 
       const response = await apiClient.get<BackendCatalogSearchResponse>(`/products/search?${searchParams.toString()}`);
 
-      if (!response.ok) {
-        return response;
-      }
-
-      return {
-        ...response,
-        data: {
-          items: response.data.items.map(mapBackendCatalogItem),
-          total: response.data.total,
-          page: response.data.page,
-          pageSize: response.data.page_size,
-          availableCategories: response.data.available_categories,
-          availableStores: response.data.available_stores.map(mapBackendStore),
-          appliedFilters: {
-            query: params.query,
-            category: params.category,
-            storeId: params.storeId,
-            minPrice: params.minPrice,
-            maxPrice: params.maxPrice,
-            minDiscount: params.minDiscount,
-            sort: params.sort
+      if (response.ok) {
+        return {
+          ...response,
+          data: {
+            items: response.data.items.map(mapBackendCatalogItem),
+            total: response.data.total,
+            page: response.data.page,
+            pageSize: response.data.page_size,
+            availableCategories: response.data.available_categories,
+            availableStores: response.data.available_stores.map(mapBackendStore),
+            appliedFilters: {
+              query: params.query,
+              category: params.category,
+              storeId: params.storeId,
+              minPrice: params.minPrice,
+              maxPrice: params.maxPrice,
+              minDiscount: params.minDiscount,
+              sort: params.sort
+            }
           }
-        }
-      };
+        };
+      }
     }
 
     const page = params.page ?? 1;
@@ -301,47 +299,43 @@ export const catalogService = {
     if (isBackendIntegrationEnabled()) {
       const response = await apiClient.get<BackendProduct>(`/products/by-slug/${encodeURIComponent(slug)}`);
 
-      if (!response.ok) {
-        if (response.error.code === "HTTP_404") {
+      if (response.ok) {
+        const offersResponse = await apiClient.get<BackendOffer[]>(`/offers?productId=${encodeURIComponent(response.data.id)}`);
+
+        if (offersResponse.ok) {
+          const offers = offersResponse.data.map(mapBackendOffer);
+          const lowestPrice = offers.length ? Math.min(...offers.map((offer) => offer.price)) : 0;
+          const highestPrice = offers.length ? Math.max(...offers.map((offer) => offer.price)) : 0;
+          const bestOffer = offers[0] ?? null;
+          const bestDiscountPercentage = Math.max(
+            ...offers.map((offer) => calculateDiscountPercentage(offer.price, offer.originalPrice)),
+            0
+          );
+
           return {
-            ok: true,
-            data: null,
-            meta: response.meta
+            ...offersResponse,
+            data: {
+              product: mapBackendProduct(response.data),
+              offers,
+              bestOffer,
+              bestOfferScore: bestOffer?.rankingScore ?? null,
+              bestOfferReason: bestOffer?.rankingReason ?? null,
+              lowestPrice,
+              highestPrice,
+              bestDiscountPercentage,
+              storeIds: [...new Set(offers.map((offer) => offer.storeId))]
+            }
           };
         }
-
-        return response;
       }
 
-      const offersResponse = await apiClient.get<BackendOffer[]>(`/offers?productId=${encodeURIComponent(response.data.id)}`);
-
-      if (!offersResponse.ok) {
-        return offersResponse;
+      if (!response.ok && response.error.code === "HTTP_404") {
+        return {
+          ok: true,
+          data: null,
+          meta: response.meta
+        };
       }
-
-      const offers = offersResponse.data.map(mapBackendOffer);
-      const lowestPrice = offers.length ? Math.min(...offers.map((offer) => offer.price)) : 0;
-      const highestPrice = offers.length ? Math.max(...offers.map((offer) => offer.price)) : 0;
-      const bestOffer = offers[0] ?? null;
-      const bestDiscountPercentage = Math.max(
-        ...offers.map((offer) => calculateDiscountPercentage(offer.price, offer.originalPrice)),
-        0
-      );
-
-      return {
-        ...offersResponse,
-        data: {
-          product: mapBackendProduct(response.data),
-          offers,
-          bestOffer,
-          bestOfferScore: bestOffer?.rankingScore ?? null,
-          bestOfferReason: bestOffer?.rankingReason ?? null,
-          lowestPrice,
-          highestPrice,
-          bestDiscountPercentage,
-          storeIds: [...new Set(offers.map((offer) => offer.storeId))]
-        }
-      };
     }
 
     const item = buildCatalogItems().find((entry) => entry.product.slug === slug) ?? null;
@@ -403,14 +397,12 @@ export const catalogService = {
 
       const response = await apiClient.get<BackendCatalogSearchResponse>(`/products/search?${searchParams.toString()}`);
 
-      if (!response.ok) {
-        return response;
+      if (response.ok) {
+        return {
+          ...response,
+          data: response.data.items.map(mapBackendCatalogItem)
+        };
       }
-
-      return {
-        ...response,
-        data: response.data.items.map(mapBackendCatalogItem)
-      };
     }
 
     const items = buildCatalogItems().filter((item) => productIds.includes(item.product.id));
@@ -421,23 +413,21 @@ export const catalogService = {
     if (isBackendIntegrationEnabled()) {
       const allItemsResponse = await this.getAllCatalogItems();
 
-      if (!allItemsResponse.ok) {
-        return allItemsResponse;
+      if (allItemsResponse.ok) {
+        const items = allItemsResponse.data;
+        const featuredProducts = sortCatalogItems(items, "popularity").slice(0, 4);
+        const bestOffers = sortCatalogItems(items, "best-discount").slice(0, 4);
+        const categories = buildCategorySummaries(items).slice(0, 6);
+
+        return {
+          ...allItemsResponse,
+          data: {
+            featuredProducts,
+            bestOffers,
+            categories
+          }
+        };
       }
-
-      const items = allItemsResponse.data;
-      const featuredProducts = sortCatalogItems(items, "popularity").slice(0, 4);
-      const bestOffers = sortCatalogItems(items, "best-discount").slice(0, 4);
-      const categories = buildCategorySummaries(items).slice(0, 6);
-
-      return {
-        ...allItemsResponse,
-        data: {
-          featuredProducts,
-          bestOffers,
-          categories
-        }
-      };
     }
 
     const items = buildCatalogItems();

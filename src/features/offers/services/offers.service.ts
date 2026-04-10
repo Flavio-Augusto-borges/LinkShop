@@ -123,14 +123,12 @@ export const offersService = {
     if (isBackendIntegrationEnabled()) {
       const response = await apiClient.get<BackendOffer[]>(`/offers?productId=${encodeURIComponent(productId)}`);
 
-      if (!response.ok) {
-        return response;
+      if (response.ok) {
+        return {
+          ...response,
+          data: response.data.map(mapBackendOffer)
+        };
       }
-
-      return {
-        ...response,
-        data: response.data.map(mapBackendOffer)
-      };
     }
 
     const offers = offersMockRepository
@@ -176,38 +174,36 @@ export const offersService = {
         `/products/${encodeURIComponent(productId)}/price-history`
       );
 
-      if (!response.ok) {
-        return response;
+      if (response.ok) {
+        const points = response.data.points.map((point) => ({
+          capturedAt: point.captured_at,
+          label: formatPointLabel(point.captured_at),
+          price: Number(point.price)
+        }));
+
+        return {
+          ...response,
+          data: {
+            currentPrice:
+              response.data.summary.current_price == null ? null : Number(response.data.summary.current_price),
+            lowestRecentPrice:
+              response.data.summary.lowest_recent_price == null
+                ? null
+                : Number(response.data.summary.lowest_recent_price),
+            highestRecentPrice:
+              response.data.summary.highest_recent_price == null
+                ? null
+                : Number(response.data.summary.highest_recent_price),
+            variationPercentage:
+              response.data.summary.variation_percentage == null
+                ? 0
+                : Number(response.data.summary.variation_percentage),
+            trend: response.data.summary.trend,
+            points,
+            sampleSize: response.data.summary.points_count
+          }
+        };
       }
-
-      const points = response.data.points.map((point) => ({
-        capturedAt: point.captured_at,
-        label: formatPointLabel(point.captured_at),
-        price: Number(point.price)
-      }));
-
-      return {
-        ...response,
-        data: {
-          currentPrice:
-            response.data.summary.current_price == null ? null : Number(response.data.summary.current_price),
-          lowestRecentPrice:
-            response.data.summary.lowest_recent_price == null
-              ? null
-              : Number(response.data.summary.lowest_recent_price),
-          highestRecentPrice:
-            response.data.summary.highest_recent_price == null
-              ? null
-              : Number(response.data.summary.highest_recent_price),
-          variationPercentage:
-            response.data.summary.variation_percentage == null
-              ? 0
-              : Number(response.data.summary.variation_percentage),
-          trend: response.data.summary.trend,
-          points,
-          sampleSize: response.data.summary.points_count
-        }
-      };
     }
 
     const history = offersMockRepository
