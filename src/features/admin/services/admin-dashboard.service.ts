@@ -157,6 +157,19 @@ type BackendOperationsSummary = {
   };
 };
 
+function buildDashboardFallback(message: string): AdminDashboardData {
+  return {
+    clickAnalytics: null,
+    alertAnalytics: null,
+    operations: null,
+    rankingDiagnostics: [],
+    recentClickEvents: [],
+    recentAlertEvents: [],
+    health: { status: "unknown", error: message },
+    readiness: { status: "unknown", error: message }
+  };
+}
+
 function mapClickAnalytics(payload: BackendClickAnalytics): AdminClickAnalytics {
   return {
     periodDays: payload.period_days,
@@ -310,56 +323,51 @@ async function fetchHealthStatus(path: "/health" | "/health/ready"): Promise<Adm
 export const adminDashboardService = {
   async getDashboardData(): Promise<ApiResponse<AdminDashboardData>> {
     if (!isBackendIntegrationEnabled()) {
-      return mockSuccess({
-        clickAnalytics: null,
-        alertAnalytics: null,
-        operations: null,
-        rankingDiagnostics: [],
-        recentClickEvents: [],
-        recentAlertEvents: [],
-        health: { status: "unknown", error: "Backend nao configurado." },
-        readiness: { status: "unknown", error: "Backend nao configurado." }
-      });
+      return mockSuccess(buildDashboardFallback("Backend nao configurado."));
     }
 
-    const [clicksResponse, alertsResponse, clickEventsResponse, alertEventsResponse, operationsResponse, health, readiness] =
-      await Promise.all([
-        apiClient.get<BackendClickAnalytics>("/admin/analytics/clicks?periodDays=30"),
-        apiClient.get<BackendAlertAnalytics>("/admin/analytics/alerts?periodDays=30"),
-        apiClient.get<BackendPaginatedResponse<BackendClickEvent>>("/admin/analytics/click-events?page=1&pageSize=5"),
-        apiClient.get<BackendPaginatedResponse<BackendAlertEvent>>("/admin/analytics/alert-events?page=1&pageSize=5"),
-        apiClient.get<BackendOperationsSummary>("/admin/operations/summary"),
-        fetchHealthStatus("/health"),
-        fetchHealthStatus("/health/ready")
-      ]);
+    try {
+      const [clicksResponse, alertsResponse, clickEventsResponse, alertEventsResponse, operationsResponse, health, readiness] =
+        await Promise.all([
+          apiClient.get<BackendClickAnalytics>("/admin/analytics/clicks?periodDays=30"),
+          apiClient.get<BackendAlertAnalytics>("/admin/analytics/alerts?periodDays=30"),
+          apiClient.get<BackendPaginatedResponse<BackendClickEvent>>("/admin/analytics/click-events?page=1&pageSize=5"),
+          apiClient.get<BackendPaginatedResponse<BackendAlertEvent>>("/admin/analytics/alert-events?page=1&pageSize=5"),
+          apiClient.get<BackendOperationsSummary>("/admin/operations/summary"),
+          fetchHealthStatus("/health"),
+          fetchHealthStatus("/health/ready")
+        ]);
 
-    const rankingCandidates = clicksResponse.ok
-      ? clicksResponse.data.top_products.slice(0, 3).map((item) => ({ id: item.id, label: item.label }))
-      : [];
+      const rankingCandidates = clicksResponse.ok
+        ? clicksResponse.data.top_products.slice(0, 3).map((item) => ({ id: item.id, label: item.label }))
+        : [];
 
-    const rankingResponses = await Promise.all(
-      rankingCandidates.map(async (candidate) => {
-        const response = await apiClient.get<BackendRankingPreview>(
-          `/admin/ranking/products/${encodeURIComponent(candidate.id)}`
-        );
+      const rankingResponses = await Promise.all(
+        rankingCandidates.map(async (candidate) => {
+          const response = await apiClient.get<BackendRankingPreview>(
+            `/admin/ranking/products/${encodeURIComponent(candidate.id)}`
+          );
 
-        if (!response.ok) {
-          return null;
-        }
+          if (!response.ok) {
+            return null;
+          }
 
-        return mapRankingDiagnostic(response.data, candidate.label);
-      })
-    );
+          return mapRankingDiagnostic(response.data, candidate.label);
+        })
+      );
 
-    return mockSuccess({
-      clickAnalytics: clicksResponse.ok ? mapClickAnalytics(clicksResponse.data) : null,
-      alertAnalytics: alertsResponse.ok ? mapAlertAnalytics(alertsResponse.data) : null,
-      operations: operationsResponse.ok ? mapOperationalSummary(operationsResponse.data) : null,
-      rankingDiagnostics: rankingResponses.filter((entry): entry is AdminRankingDiagnostic => entry !== null),
-      recentClickEvents: clickEventsResponse.ok ? clickEventsResponse.data.data.map(mapClickEvent) : [],
-      recentAlertEvents: alertEventsResponse.ok ? alertEventsResponse.data.data.map(mapAlertEvent) : [],
-      health,
-      readiness
-    });
+      return mockSuccess({
+        clickAnalytics: clicksResponse.ok ? mapClickAnalytics(clicksResponse.data) : null,
+        alertAnalytics: alertsResponse.ok ? mapAlertAnalytics(alertsResponse.data) : null,
+        operations: operationsResponse.ok ? mapOperationalSummary(operationsResponse.data) : null,
+        rankingDiagnostics: rankingResponses.filter((entry): entry is AdminRankingDiagnostic => entry !== null),
+        recentClickEvents: clickEventsResponse.ok ? clickEventsResponse.data.data.map(mapClickEvent) : [],
+        recentAlertEvents: alertEventsResponse.ok ? alertEventsResponse.data.data.map(mapAlertEvent) : [],
+        health,
+        readiness
+      });
+    } catch {
+      return mockSuccess(buildDashboardFallback("Falha ao conectar com o backend."));
+    }
   }
 };

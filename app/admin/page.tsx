@@ -1,28 +1,22 @@
 import type { Metadata } from "next";
+import { unstable_noStore as noStore } from "next/cache";
 
 import { AdminDashboard } from "@/features/admin";
-import { adminDashboardService } from "@/features/admin/services/admin-dashboard.service";
+import { adminPageService } from "@/features/admin/services/admin-page.service";
 import { AccessGuard } from "@/features/auth";
-import { catalogService } from "@/features/catalog/services/catalog.service";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: "Painel interno",
-  description: "Visao operacional inicial com observabilidade do produto e gestao do catalogo."
+  description:
+    "Visao operacional inicial com observabilidade do produto e gestao do catalogo.",
 };
 
 export default async function AdminPage() {
-  const [catalogResponse, dashboardResponse] = await Promise.all([
-    catalogService.getCatalogBootstrap(),
-    adminDashboardService.getDashboardData()
-  ]);
-
-  if (!catalogResponse.ok) {
-    throw new Error(catalogResponse.error.message);
-  }
-
-  if (!dashboardResponse.ok) {
-    throw new Error(dashboardResponse.error.message);
-  }
+  noStore();
+  const initialData = await adminPageService.getInitialData();
 
   return (
     <AccessGuard
@@ -30,7 +24,10 @@ export default async function AdminPage() {
       title="Somente administradores podem entrar aqui"
       description="A area interna usa a mesma base integrada do produto e expoe a superficie operacional inicial."
     >
-      <AdminDashboard initialCatalog={catalogResponse.data} initialDashboard={dashboardResponse.data} />
+      <AdminDashboard
+        initialCatalog={initialData.catalog}
+        initialDashboard={initialData.dashboard}
+      />
     </AccessGuard>
   );
 }
