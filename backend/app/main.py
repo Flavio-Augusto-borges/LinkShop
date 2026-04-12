@@ -27,7 +27,7 @@ app.add_middleware(
         "http://localhost:3000",
         "https://link-shop-navy.vercel.app"
     ],
-    allow_origin_regex=r"https://link-shop-navy-.*\.vercel\.app",
+    allow_origin_regex=r"^https://link-shop-navy-[a-z0-9-]+\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
