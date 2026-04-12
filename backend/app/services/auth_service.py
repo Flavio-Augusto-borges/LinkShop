@@ -30,22 +30,32 @@ class AuthContext:
 class AuthService:
     @staticmethod
     def register(db: Session, payload: AuthRegisterInput) -> User:
-        normalized_email = payload.email.lower().strip()
-        existing_user = db.scalar(select(User).where(User.email == normalized_email))
-
-        if existing_user:
-            raise ConflictError("Email already registered", code="EMAIL_ALREADY_REGISTERED")
-
-        user = User(
+        user, created = AuthService._create_user(
+            db,
             name=payload.name.strip(),
-            email=normalized_email,
-            password_hash=hash_password(payload.password),
+            email=payload.email.lower().strip(),
+            password=payload.password,
             role="user",
         )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+        if not created:
+            raise ConflictError("Email already registered", code="EMAIL_ALREADY_REGISTERED")
         return user
+
+    @staticmethod
+    def ensure_admin_user(
+        db: Session,
+        *,
+        email: str,
+        password: str,
+        name: str = "LinkShop Admin",
+    ) -> tuple[User, bool]:
+        return AuthService._create_user(
+            db,
+            name=name.strip(),
+            email=email.lower().strip(),
+            password=password,
+            role="admin",
+        )
 
     @staticmethod
     def login(db: Session, payload: AuthLoginInput) -> User | None:
@@ -199,3 +209,27 @@ class AuthService:
     @staticmethod
     def _is_access_session_usable(session: AuthSession) -> bool:
         return AuthService._is_refresh_session_usable(session)
+
+    @staticmethod
+    def _create_user(
+        db: Session,
+        *,
+        name: str,
+        email: str,
+        password: str,
+        role: str,
+    ) -> tuple[User, bool]:
+        existing_user = db.scalar(select(User).where(User.email == email))
+        if existing_user:
+            return existing_user, False
+
+        user = User(
+            name=name,
+            email=email,
+            password_hash=hash_password(password),
+            role=role,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        return user, True
