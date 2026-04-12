@@ -1,5 +1,7 @@
 import os
+import logging
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import SecretStr, model_validator
@@ -77,3 +79,68 @@ def get_settings() -> Settings:
 
 
 settings = get_settings()
+
+
+def _load_env_file_keys(env_file: str | Path | None) -> set[str]:
+    if not env_file:
+        return set()
+
+    env_path = Path(env_file)
+    if not env_path.exists():
+        return set()
+
+    keys: set[str] = set()
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key = line.split("=", maxsplit=1)[0].strip()
+        if key:
+            keys.add(key)
+    return keys
+
+
+def validate_critical_environment(current_settings: Settings) -> None:
+    logger = logging.getLogger("linkshop.startup")
+    env_file = current_settings.model_config.get("env_file")
+    env_file_keys = _load_env_file_keys(env_file)
+
+    required_keys = [
+        "DATABASE_URL",
+        "AUTH_SECRET_KEY",
+        "RUN_MIGRATIONS_ON_STARTUP",
+    ]
+
+    missing_keys = [
+        key for key in required_keys if key not in os.environ and key not in env_file_keys
+    ]
+    invalid_values: list[str] = []
+
+    if not current_settings.database_url.strip():
+        invalid_values.append("DATABASE_URL")
+
+    if not current_settings.auth_secret_key.get_secret_value().strip():
+        invalid_values.append("AUTH_SECRET_KEY")
+
+    if missing_keys or invalid_values:
+        for key in missing_keys:
+            logger.error("Missing required environment variable: %s", key)
+        for key in invalid_values:
+            logger.error("Environment variable configured with blank/invalid value: %s", key)
+
+        details = []
+        if missing_keys:
+            details.append(f"missing={','.join(missing_keys)}")
+        if invalid_values:
+            details.append(f"invalid={','.join(invalid_values)}")
+
+        raise RuntimeError(
+            "Critical startup environment validation failed: "
+            + " | ".join(details)
+            + ". "
+            + "Use AUTH_SECRET_KEY as the JWT/refresh signing secret in this project."
+        )
+
+    logger.info(
+        "Critical startup environment validated: DATABASE_URL, AUTH_SECRET_KEY (JWT/refresh equivalent), RUN_MIGRATIONS_ON_STARTUP"
+    )

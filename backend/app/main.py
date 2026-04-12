@@ -6,13 +6,14 @@ from sqlalchemy import text
 from app.api.error_handlers import register_error_handlers
 from app.api.middleware import RequestContextMiddleware
 from app.api.router import api_router
-from app.core.config import settings
+from app.core.config import settings, validate_critical_environment
 from app.core.logging import configure_logging
 from app.db.session import SessionLocal
 from app.integrations.registry import integration_registry
 
 
 configure_logging(settings.log_level)
+validate_critical_environment(settings)
 
 app = FastAPI(
     title=settings.app_name,
