@@ -2,6 +2,25 @@
 
 Base inicial do backend em FastAPI para o comparador de precos.
 
+## Checklist rapido de producao (Render)
+
+1. Variaveis obrigatorias no backend:
+   - `DATABASE_URL`
+   - `AUTH_SECRET_KEY`
+   - `RUN_MIGRATIONS_ON_STARTUP`
+   - `CORS_ORIGINS`
+2. Em Render, use explicitamente `RUN_MIGRATIONS_ON_STARTUP=true`.
+3. Ordem recomendada:
+   - ajustar envs no Render
+   - fazer deploy do backend
+   - validar `GET /health` e `GET /health/ready`
+   - depois validar login/cadastro e fluxos no frontend
+4. Backend subiu corretamente quando:
+   - `GET /health` retorna `200`
+   - `GET /health/ready` retorna `200`
+5. O frontend depende das URLs corretas do backend em producao (ex.: `NEXT_PUBLIC_API_BASE_URL` apontando para a API publica).
+6. Em producao, `CORS_ORIGINS` deve incluir o dominio publico do frontend (Vercel) e nao apenas localhost.
+
 ## Estrutura
 
 ```text

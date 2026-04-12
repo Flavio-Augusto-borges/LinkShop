@@ -25,6 +25,7 @@ Minimo para ambiente externo:
 - `APP_DEBUG=false`
 - `DATABASE_URL`
 - `AUTH_SECRET_KEY`
+- `RUN_MIGRATIONS_ON_STARTUP=true` (Render: manter explicitamente `true`)
 - `CORS_ORIGINS`
 - `ACCESS_TOKEN_TTL_MINUTES`
 - `REFRESH_TOKEN_TTL_DAYS`
@@ -33,6 +34,20 @@ Minimo para ambiente externo:
 - `PORT` (em Render e similares, costuma vir automaticamente e tem prioridade sobre `APP_PORT`)
 - `WEB_CONCURRENCY`
 - `LOG_LEVEL`
+
+## Ordem Correta De Deploy (Pratica)
+
+1. Configure as variaveis obrigatorias no ambiente externo.
+2. Confirme `RUN_MIGRATIONS_ON_STARTUP=true` no Render.
+3. Realize o deploy do backend.
+4. Valide `GET /health` e `GET /health/ready`.
+5. Execute smoke check pos-deploy.
+6. So depois valide o frontend apontando para a URL publica correta da API.
+
+Observacao importante:
+
+- O frontend depende de URL publica correta do backend (`NEXT_PUBLIC_API_BASE_URL`).
+- Em producao, CORS deve incluir o dominio publico do frontend (ex.: Vercel), senao login/cadastro e chamadas autenticadas podem falhar no browser.
 
 ## Preparacao
 
