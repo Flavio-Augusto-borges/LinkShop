@@ -4,6 +4,7 @@ set -e
 if [ "${RUN_MIGRATIONS_ON_STARTUP:-false}" = "true" ]; then
   alembic -c backend/alembic.ini upgrade head
   python backend/ensure_admin_user.py
+  python backend/ensure_base_stores.py
 fi
 
 if [ "$#" -eq 0 ] || [ "$1" = "python" -a "$2" = "-m" -a "$3" = "uvicorn" ]; then
