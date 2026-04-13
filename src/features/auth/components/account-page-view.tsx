@@ -26,7 +26,7 @@ export function AccountPageView() {
         <div className="rounded-[2rem] bg-white p-8 shadow-glow">
           <h1 className="font-display text-4xl">Entre para acessar sua conta.</h1>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-neutral-600">
-            Sua area de conta centraliza favoritos, lista comparativa e o futuro historico sincronizado por usuario.
+            Sua area de conta centraliza favoritos, carrinho e o futuro historico sincronizado por usuario.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
@@ -80,7 +80,7 @@ export function AccountPageView() {
               href="/lista"
               className="inline-flex items-center justify-center rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800"
             >
-              Ver sua lista
+              Ver carrinho
             </Link>
             <button
               type="button"
@@ -97,7 +97,7 @@ export function AccountPageView() {
             <p className="text-xs font-extrabold uppercase tracking-[0.24em] text-coral">Resumo</p>
             <div className="mt-4 grid gap-3 text-sm text-neutral-600">
               <span>{userFavoritesCount} produtos nos favoritos</span>
-              <span>{userCart?.totalItems ?? 0} itens na lista comparativa</span>
+              <span>{userCart?.totalItems ?? 0} itens no carrinho</span>
               <span>{userWatchCount} produtos com acompanhamento ativo</span>
               <span>Total estimado atual: {(userCart?.subtotal ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
             </div>
@@ -108,7 +108,7 @@ export function AccountPageView() {
           <div className="rounded-[1.75rem] bg-gradient-to-br from-ink via-neutral-900 to-lagoon p-5 text-white shadow-glow">
             <p className="text-xs font-extrabold uppercase tracking-[0.24em] text-white/70">Proxima etapa</p>
             <p className="mt-3 text-sm leading-7 text-white/75">
-              Quando o backend real entrar, esta area podera sincronizar favoritos, lista, produtos acompanhados e historico da conta por usuario autenticado.
+              Quando o backend real entrar, esta area podera sincronizar favoritos, carrinho, produtos acompanhados e historico da conta por usuario autenticado.
             </p>
           </div>
         </aside>

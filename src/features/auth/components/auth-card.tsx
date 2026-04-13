@@ -107,14 +107,14 @@ export function AuthCard() {
             <p className="text-xs font-extrabold uppercase tracking-[0.24em] text-white/70">Sessao ativa</p>
             <h1 className="mt-3 font-display text-4xl leading-tight md:text-5xl">Sua conta ja esta autenticada.</h1>
             <p className="mt-4 max-w-xl text-sm leading-7 text-white/75 md:text-base">
-              Favoritos e lista comparativa agora ficam associados a esta identidade, preparados para futura sincronizacao real.
+              Favoritos e carrinho agora ficam associados a esta identidade, preparados para futura sincronizacao real.
             </p>
           </aside>
 
           <div className="glass-panel p-6 md:p-8">
             <h2 className="font-display text-3xl">Bem-vindo, {session.user.name}</h2>
             <p className="mt-2 text-sm leading-7 text-neutral-600">
-              Sua sessao esta pronta. Voce pode seguir para a conta, favoritos ou lista comparativa.
+              Sua sessao esta pronta. Voce pode seguir para a conta, favoritos ou carrinho.
             </p>
 
             <div className="mt-6 grid gap-3 text-sm text-neutral-600">
@@ -158,7 +158,7 @@ export function AuthCard() {
             Entre agora e leve seus dados de visitante com voce.
           </h1>
           <p className="mt-4 max-w-xl text-sm leading-7 text-white/75 md:text-base">
-            Favoritos e lista comparativa salvos como visitante sao mesclados com sua conta autenticada sem perder dados nem duplicar produtos.
+            Favoritos e carrinho salvos como visitante sao mesclados com sua conta autenticada sem perder dados nem duplicar produtos.
           </p>
 
           <div className="mt-8 grid gap-3">
@@ -262,7 +262,7 @@ export function AuthCard() {
             ) : null}
 
             <div className="rounded-[1.5rem] bg-black/5 p-4 text-sm text-neutral-600">
-              Regra de transicao: favoritos sao unidos por produto, e a lista comparativa e unificada por produto sem duplicar itens. Em conflito, mantemos a maior quantidade e os detalhes mais recentes.
+              Regra de transicao: favoritos sao unidos por produto, e o carrinho e unificado por produto sem duplicar itens. Em conflito, mantemos a maior quantidade e os detalhes mais recentes.
             </div>
 
             <div className="flex flex-col gap-3 md:flex-row">

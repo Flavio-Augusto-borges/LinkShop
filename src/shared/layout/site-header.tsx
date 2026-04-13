@@ -107,7 +107,7 @@ export function SiteHeader() {
               Favoritos ({favoritesCount})
             </Link>
             <Link href="/lista" className={navItemClass("/lista")}>
-              Lista ({cart?.totalItems ?? 0})
+              Carrinho ({cart?.totalItems ?? 0})
             </Link>
             <Link href={accountHref} className={navItemClass(accountHref)}>
               {accountLabel}

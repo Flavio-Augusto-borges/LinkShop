@@ -45,7 +45,7 @@ export function CompareListButton({
           : "bg-ink text-white hover:bg-neutral-800"
       } ${variant === "full" ? "w-full md:w-auto" : ""}`}
     >
-      {active ? "Na sua lista" : "Adicionar a lista"}
+      {active ? "No carrinho" : "Adicionar ao carrinho"}
     </button>
   );
 }

@@ -77,9 +77,9 @@ export function CartPageView() {
   return (
     <section className="section-shell">
       <SectionHeading
-        eyebrow="Sua lista"
+        eyebrow="Carrinho"
         title="Produtos que voce quer acompanhar"
-        description="Use esta lista comparativa leve para revisar itens, ajustar quantidade e seguir para a melhor loja no momento certo."
+        description="Use este carrinho comparativo leve para revisar itens, ajustar quantidade e seguir para a melhor loja no momento certo."
         action={
           <div className="grid gap-2 rounded-[1.5rem] bg-white px-5 py-4 text-sm text-neutral-500 shadow-glow">
             <span>{cart?.totalItems ?? 0} itens adicionados</span>
@@ -111,7 +111,7 @@ export function CartPageView() {
               onClick={() => void clearCartByOwner(ownerId)}
               className="inline-flex items-center justify-center rounded-full bg-black/5 px-5 py-3 text-sm font-semibold text-ink transition hover:bg-black/10"
             >
-              Limpar lista
+              Limpar carrinho
             </button>
           </div>
 
@@ -206,7 +206,7 @@ export function CartPageView() {
         </div>
       ) : (
         <div className="rounded-[1.75rem] bg-white p-8 text-center shadow-glow">
-          <h3 className="font-display text-3xl">Sua lista comparativa ainda esta vazia.</h3>
+          <h3 className="font-display text-3xl">Seu carrinho ainda esta vazio.</h3>
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-neutral-600">
             Adicione produtos durante a navegacao para acompanhar melhor preco, quantidade desejada e a melhor loja antes do clique.
           </p>
@@ -215,7 +215,7 @@ export function CartPageView() {
               href="/buscar"
               className="inline-flex items-center justify-center rounded-full bg-coral px-5 py-3 text-sm font-semibold text-white transition hover:bg-orange-600"
             >
-              Montar minha lista
+              Montar meu carrinho
             </Link>
           </div>
         </div>
