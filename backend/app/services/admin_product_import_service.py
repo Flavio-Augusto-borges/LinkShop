@@ -72,6 +72,7 @@ class AdminProductImportService:
                 results.append(
                     AdminProductImportBatchItemRead(
                         url=raw_url,
+                        resolved_url=None,
                         status="invalid",
                         message="Empty URL entry",
                     )
@@ -79,13 +80,17 @@ class AdminProductImportService:
                 counters["invalid"] += 1
                 continue
 
+            resolved_url: str | None = None
             try:
                 imported = AdminProductImportService.import_by_url(url)
+                resolved_url = imported.resolved_url
             except BusinessRuleError as exc:
                 status = AdminProductImportService._classify_error_status(exc.code)
+                resolved_url = AdminProductImportService._resolve_url_for_diagnostics(url)
                 results.append(
                     AdminProductImportBatchItemRead(
                         url=url,
+                        resolved_url=resolved_url,
                         status=status,
                         message=exc.message,
                     )
@@ -93,9 +98,11 @@ class AdminProductImportService:
                 counters[AdminProductImportService._counter_key_for_status(status)] += 1
                 continue
             except Exception:
+                resolved_url = AdminProductImportService._resolve_url_for_diagnostics(url)
                 results.append(
                     AdminProductImportBatchItemRead(
                         url=url,
+                        resolved_url=resolved_url,
                         status="extraction_failed",
                         message="Unexpected import failure for URL",
                     )
@@ -108,6 +115,7 @@ class AdminProductImportService:
                 results.append(
                     AdminProductImportBatchItemRead(
                         url=url,
+                        resolved_url=resolved_url,
                         status="duplicate",
                         message=duplicate["message"],
                         product_id=duplicate["product_id"],
@@ -122,6 +130,7 @@ class AdminProductImportService:
                 results.append(
                     AdminProductImportBatchItemRead(
                         url=url,
+                        resolved_url=resolved_url,
                         status="extraction_failed",
                         message=f"missing_required_field: {', '.join(missing_fields)}",
                     )
@@ -159,6 +168,7 @@ class AdminProductImportService:
                 results.append(
                     AdminProductImportBatchItemRead(
                         url=url,
+                        resolved_url=resolved_url,
                         status="extraction_failed",
                         message="Insufficient data to build product payload",
                     )
@@ -172,6 +182,7 @@ class AdminProductImportService:
                 results.append(
                     AdminProductImportBatchItemRead(
                         url=url,
+                        resolved_url=resolved_url,
                         status="imported",
                         message="Imported successfully",
                         product_id=catalog_item.product.id,
@@ -194,6 +205,7 @@ class AdminProductImportService:
                 results.append(
                     AdminProductImportBatchItemRead(
                         url=url,
+                        resolved_url=resolved_url,
                         status=mapped_status,
                         message=mapped_message,
                     )
@@ -274,6 +286,15 @@ class AdminProductImportService:
             )
 
         return content.decode("utf-8", errors="ignore"), resolved_url
+
+    @staticmethod
+    def _resolve_url_for_diagnostics(url: str) -> str | None:
+        try:
+            normalized_url = AdminProductImportService._normalize_input_url(url)
+            _, resolved_url = AdminProductImportService._fetch_html_with_redirects(normalized_url)
+            return resolved_url
+        except Exception:
+            return None
 
     @staticmethod
     def _import_mercado_livre(*, source_url: str, resolved_url: str, html: str) -> AdminProductImportRead:
@@ -672,6 +693,9 @@ class AdminProductImportService:
 
     @staticmethod
     def _looks_like_mercado_livre_product_page(resolved_url: str, html: str, snapshots: list[object]) -> bool:
+        if not AdminProductImportService._url_matches_mercado_livre_host(resolved_url):
+            return False
+
         if re.search(r"MLB[-_]?\d+", resolved_url, flags=re.IGNORECASE):
             return True
 
@@ -687,7 +711,71 @@ class AdminProductImportService:
                     if isinstance(value, str) and re.search(r"MLB[-_]?\d+", value, flags=re.IGNORECASE):
                         return True
 
+        meta = AdminProductImportService._extract_meta_tags(html)
+        canonical_url = AdminProductImportService._extract_canonical_url(html, meta)
+        og_url = meta.get("og:url")
+
+        path_signal = any(
+            AdminProductImportService._looks_like_mercado_livre_product_path(candidate_url)
+            for candidate_url in (resolved_url, canonical_url, og_url)
+            if candidate_url
+        )
+        canonical_host_signal = any(
+            AdminProductImportService._url_matches_mercado_livre_host(candidate_url)
+            for candidate_url in (canonical_url, og_url)
+            if candidate_url
+        )
+        og_type_product_signal = meta.get("og:type", "").strip().lower() == "product"
+        name_signal = bool(meta.get("og:title") or meta.get("twitter:title") or meta.get("title"))
+        price_signal = (
+            AdminProductImportService._extract_price({}, meta) is not None
+            or AdminProductImportService._extract_price_from_snapshots(snapshots) is not None
+            or AdminProductImportService._extract_price_from_html(html) is not None
+        )
+        thumbnail_signal = bool(
+            AdminProductImportService._extract_thumbnail_url({}, meta)
+            or AdminProductImportService._extract_thumbnail_url_from_snapshots(snapshots)
+            or AdminProductImportService._extract_thumbnail_url_from_html(html)
+        )
+
+        if og_type_product_signal and (price_signal or thumbnail_signal):
+            return True
+
+        if path_signal and price_signal and thumbnail_signal:
+            return True
+
+        if canonical_host_signal and name_signal and price_signal and thumbnail_signal:
+            return True
+
         return False
+
+    @staticmethod
+    def _url_matches_mercado_livre_host(url: str) -> bool:
+        host = urlparse(url).netloc.lower()
+        return any(marker in host for marker in AdminProductImportService._MERCADO_LIVRE_HOST_MARKERS)
+
+    @staticmethod
+    def _looks_like_mercado_livre_product_path(url: str) -> bool:
+        parsed = urlparse(url)
+        path = parsed.path.lower()
+        return bool(re.search(r"/(mlb[-_]?\d+|p/|item/|produto/)", path, flags=re.IGNORECASE))
+
+    @staticmethod
+    def _extract_canonical_url(html: str, meta: dict[str, str]) -> str | None:
+        for key in ("og:url", "twitter:url"):
+            value = meta.get(key)
+            if value and value.strip():
+                return value.strip()
+
+        canonical_match = re.search(
+            r'<link[^>]+rel=["\']canonical["\'][^>]*href=["\']([^"\']+)["\']',
+            html,
+            flags=re.IGNORECASE,
+        )
+        if canonical_match:
+            return unescape(canonical_match.group(1).strip())
+
+        return None
 
     @staticmethod
     def _extract_price_from_snapshots(snapshots: list[object]) -> Decimal | None:

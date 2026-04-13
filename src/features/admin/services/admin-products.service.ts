@@ -111,6 +111,7 @@ type AdminProductBatchImportPayload = {
 
 type BackendAdminBatchImportItem = {
   url: string;
+  resolved_url: string | null;
   status: "imported" | "duplicate" | "invalid" | "extraction_failed" | "not_supported";
   message: string;
   product_id: string | null;
@@ -245,6 +246,7 @@ function mapBackendBatchImportResponse(payload: BackendAdminBatchImportResponse)
     },
     results: payload.results.map((entry) => ({
       url: entry.url,
+      resolvedUrl: entry.resolved_url,
       status: entry.status,
       message: entry.message,
       productId: entry.product_id,

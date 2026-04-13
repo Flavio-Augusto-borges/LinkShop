@@ -44,6 +44,7 @@ export type AdminImportedProduct = {
 
 export type AdminBatchImportItem = {
   url: string;
+  resolvedUrl: string | null;
   status: "imported" | "duplicate" | "invalid" | "extraction_failed" | "not_supported";
   message: string;
   productId: string | null;

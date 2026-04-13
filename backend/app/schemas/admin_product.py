@@ -58,6 +58,7 @@ class AdminProductImportBatchInput(BaseModel):
 
 class AdminProductImportBatchItemRead(BaseModel):
     url: str
+    resolved_url: str | None = Field(default=None, max_length=2000)
     status: str
     message: str
     product_id: str | None = None

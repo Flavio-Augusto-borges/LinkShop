@@ -321,7 +321,8 @@ export function AdminDashboard({ initialCatalog, initialDashboard }: AdminDashbo
                 <thead className="sticky top-0 bg-white">
                   <tr>
                     <th className="px-3 py-2">Status</th>
-                    <th className="px-3 py-2">URL</th>
+                    <th className="px-3 py-2">URL enviada</th>
+                    <th className="px-3 py-2">URL resolvida</th>
                     <th className="px-3 py-2">Mensagem</th>
                   </tr>
                 </thead>
@@ -330,6 +331,7 @@ export function AdminDashboard({ initialCatalog, initialDashboard }: AdminDashbo
                     <tr key={`${entry.url}-${index}`} className="border-t border-black/5">
                       <td className="px-3 py-2">{entry.status}</td>
                       <td className="max-w-[280px] truncate px-3 py-2">{entry.url}</td>
+                      <td className="max-w-[280px] truncate px-3 py-2">{entry.resolvedUrl ?? "-"}</td>
                       <td className="px-3 py-2">{entry.message}</td>
                     </tr>
                   ))}
