@@ -277,6 +277,21 @@ class AdminProductImportService:
 
     @staticmethod
     def _import_mercado_livre(*, source_url: str, resolved_url: str, html: str) -> AdminProductImportRead:
+        if AdminProductImportService._looks_like_blocked_or_challenge_page(html):
+            raise BusinessRuleError(
+                "blocked_or_challenge_page",
+                code="IMPORT_BLOCKED_OR_CHALLENGE_PAGE",
+                status_code=502,
+            )
+
+        snapshots = AdminProductImportService._extract_structured_state_snapshots(html)
+        if not AdminProductImportService._looks_like_mercado_livre_product_page(resolved_url, html, snapshots):
+            raise BusinessRuleError(
+                "redirect_resolved_non_product_page",
+                code="IMPORT_REDIRECT_RESOLVED_NON_PRODUCT_PAGE",
+                status_code=400,
+            )
+
         meta = AdminProductImportService._extract_meta_tags(html)
         product_json = AdminProductImportService._extract_product_json_ld(html)
 
@@ -284,10 +299,18 @@ class AdminProductImportService:
         name = AdminProductImportService._extract_name(product_json, meta)
         description = AdminProductImportService._extract_description(product_json, meta)
         thumbnail_url = AdminProductImportService._extract_thumbnail_url(product_json, meta)
+        if not thumbnail_url:
+            thumbnail_url = AdminProductImportService._extract_thumbnail_url_from_snapshots(snapshots)
+        if not thumbnail_url:
+            thumbnail_url = AdminProductImportService._extract_thumbnail_url_from_html(html)
         brand = AdminProductImportService._extract_brand(product_json)
         category = AdminProductImportService._extract_category(product_json)
         seller_name = AdminProductImportService._extract_seller_name(product_json)
         price = AdminProductImportService._extract_price(product_json, meta)
+        if price is None:
+            price = AdminProductImportService._extract_price_from_snapshots(snapshots)
+        if price is None:
+            price = AdminProductImportService._extract_price_from_html(html)
         original_price = AdminProductImportService._extract_original_price(product_json, price)
 
         if not name:
@@ -536,6 +559,260 @@ class AdminProductImportService:
             return None
 
     @staticmethod
+    def _extract_structured_state_snapshots(html: str) -> list[object]:
+        snapshots: list[object] = []
+
+        next_data = AdminProductImportService._extract_script_json_by_id(html, "__NEXT_DATA__")
+        if next_data is not None:
+            snapshots.append(next_data)
+
+        for token in (
+            "window.__PRELOADED_STATE__",
+            "__PRELOADED_STATE__",
+            "window.__INITIAL_STATE__",
+            "__INITIAL_STATE__",
+        ):
+            parsed = AdminProductImportService._extract_json_object_after_token(html, token)
+            if parsed is not None:
+                snapshots.append(parsed)
+
+        return snapshots
+
+    @staticmethod
+    def _extract_script_json_by_id(html: str, script_id: str) -> object | None:
+        pattern = re.compile(
+            rf"<script[^>]*id=[\"']{re.escape(script_id)}[\"'][^>]*>(.*?)</script>",
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        match = pattern.search(html)
+        if not match:
+            return None
+
+        content = match.group(1).strip()
+        if not content:
+            return None
+
+        try:
+            return json.loads(unescape(content))
+        except json.JSONDecodeError:
+            return None
+
+    @staticmethod
+    def _extract_json_object_after_token(html: str, token: str) -> dict | None:
+        token_index = html.find(token)
+        if token_index < 0:
+            return None
+
+        start_index = html.find("{", token_index)
+        if start_index < 0:
+            return None
+
+        object_source = AdminProductImportService._extract_balanced_braces(html, start_index)
+        if not object_source:
+            return None
+
+        try:
+            parsed = json.loads(unescape(object_source))
+        except json.JSONDecodeError:
+            return None
+
+        return parsed if isinstance(parsed, dict) else None
+
+    @staticmethod
+    def _extract_balanced_braces(text: str, start_index: int) -> str | None:
+        depth = 0
+        in_string = False
+        quote_char = ""
+        escaping = False
+
+        for index in range(start_index, len(text)):
+            char = text[index]
+
+            if in_string:
+                if escaping:
+                    escaping = False
+                    continue
+                if char == "\\":
+                    escaping = True
+                    continue
+                if char == quote_char:
+                    in_string = False
+                continue
+
+            if char in {"\"", "'"}:
+                in_string = True
+                quote_char = char
+                continue
+
+            if char == "{":
+                depth += 1
+            elif char == "}":
+                depth -= 1
+                if depth == 0:
+                    return text[start_index : index + 1]
+
+        return None
+
+    @staticmethod
+    def _looks_like_blocked_or_challenge_page(html: str) -> bool:
+        sample = html.lower()
+        markers = (
+            "captcha",
+            "cf-challenge",
+            "cloudflare",
+            "are you human",
+            "acesso suspeito",
+            "verifique se voce e humano",
+            "verify you are human",
+            "perimeterx",
+            "px-captcha",
+            "robot check",
+        )
+        return any(marker in sample for marker in markers)
+
+    @staticmethod
+    def _looks_like_mercado_livre_product_page(resolved_url: str, html: str, snapshots: list[object]) -> bool:
+        if re.search(r"MLB[-_]?\d+", resolved_url, flags=re.IGNORECASE):
+            return True
+
+        if re.search(r'"(?:id|item_id|itemId)"\s*:\s*"MLB[-_]?\d+"', html, flags=re.IGNORECASE):
+            return True
+
+        for snapshot in snapshots:
+            for node in AdminProductImportService._iter_json_nodes(snapshot):
+                if not isinstance(node, dict):
+                    continue
+                for key in ("id", "item_id", "itemId"):
+                    value = node.get(key)
+                    if isinstance(value, str) and re.search(r"MLB[-_]?\d+", value, flags=re.IGNORECASE):
+                        return True
+
+        return False
+
+    @staticmethod
+    def _extract_price_from_snapshots(snapshots: list[object]) -> Decimal | None:
+        candidate_keys = ("price", "sale_price", "current_price", "price_to_show", "raw_price")
+
+        for snapshot in snapshots:
+            for node in AdminProductImportService._iter_json_nodes(snapshot):
+                if not isinstance(node, dict):
+                    continue
+
+                for key in candidate_keys:
+                    value = node.get(key)
+                    price = AdminProductImportService._to_decimal(value)
+                    if price is not None and price > 0:
+                        return price
+
+                nested_price = node.get("price")
+                if isinstance(nested_price, dict):
+                    for nested_key in ("amount", "value", "current_price", "sale_price"):
+                        price = AdminProductImportService._to_decimal(nested_price.get(nested_key))
+                        if price is not None and price > 0:
+                            return price
+
+                if any(key in node for key in ("currency", "currency_id", "currencyId")):
+                    price = AdminProductImportService._to_decimal(node.get("amount"))
+                    if price is not None and price > 0:
+                        return price
+
+        return None
+
+    @staticmethod
+    def _extract_price_from_html(html: str) -> Decimal | None:
+        patterns = (
+            r'"price"\s*:\s*"?([0-9][0-9.,]{0,20})"?',
+            r'"current_price"\s*:\s*"?([0-9][0-9.,]{0,20})"?',
+            r'"sale_price"\s*:\s*"?([0-9][0-9.,]{0,20})"?',
+            r'"amount"\s*:\s*"?([0-9][0-9.,]{0,20})"?',
+        )
+
+        for pattern in patterns:
+            for match in re.finditer(pattern, html, flags=re.IGNORECASE):
+                price = AdminProductImportService._to_decimal(match.group(1))
+                if price is not None and price > 0:
+                    return price
+
+        return None
+
+    @staticmethod
+    def _extract_thumbnail_url_from_snapshots(snapshots: list[object]) -> str | None:
+        image_keys = (
+            "thumbnail",
+            "secure_thumbnail",
+            "thumbnail_url",
+            "picture",
+            "picture_url",
+            "image",
+            "image_url",
+            "secure_url",
+            "url",
+        )
+
+        for snapshot in snapshots:
+            for node in AdminProductImportService._iter_json_nodes(snapshot):
+                if not isinstance(node, dict):
+                    continue
+
+                for key in image_keys:
+                    candidate = node.get(key)
+                    image_url = AdminProductImportService._extract_image_url_from_value(candidate)
+                    if image_url:
+                        return image_url
+
+        return None
+
+    @staticmethod
+    def _extract_thumbnail_url_from_html(html: str) -> str | None:
+        patterns = (
+            r'https?://[^"\'\s>]*mlstatic[^"\'\s>]*\.(?:jpg|jpeg|png|webp)(?:\?[^"\'\s>]*)?',
+            r'https?://[^"\'\s>]*mlstatic[^"\'\s>]*',
+        )
+
+        for pattern in patterns:
+            match = re.search(pattern, html, flags=re.IGNORECASE)
+            if match:
+                candidate = match.group(0)
+                if AdminProductImportService._is_valid_image_url(candidate):
+                    return candidate
+
+        return None
+
+    @staticmethod
+    def _extract_image_url_from_value(value: object) -> str | None:
+        if isinstance(value, str):
+            candidate = value.strip()
+            if AdminProductImportService._is_valid_image_url(candidate):
+                return candidate
+            return None
+
+        if isinstance(value, list):
+            for item in value:
+                resolved = AdminProductImportService._extract_image_url_from_value(item)
+                if resolved:
+                    return resolved
+            return None
+
+        if isinstance(value, dict):
+            for key in ("secure_url", "url", "src", "source", "original"):
+                resolved = AdminProductImportService._extract_image_url_from_value(value.get(key))
+                if resolved:
+                    return resolved
+
+        return None
+
+    @staticmethod
+    def _is_valid_image_url(url: str) -> bool:
+        lowered = url.lower()
+        if not lowered.startswith(("http://", "https://")):
+            return False
+
+        if "mlstatic" in lowered:
+            return True
+
+        return bool(re.search(r"\.(jpg|jpeg|png|webp)(?:$|\?)", lowered))
+
+    @staticmethod
     def _collect_missing_required_fields(imported: AdminProductImportRead) -> list[str]:
         missing_fields: list[str] = []
 
@@ -552,10 +829,15 @@ class AdminProductImportService:
         if error_code == "IMPORT_PROVIDER_NOT_SUPPORTED":
             return "not_supported"
 
-        if error_code in {"IMPORT_URL_INVALID", "IMPORT_REDIRECT_INVALID_DESTINATION", "IMPORT_REDIRECT_FAILED"}:
+        if error_code in {
+            "IMPORT_URL_INVALID",
+            "IMPORT_REDIRECT_INVALID_DESTINATION",
+            "IMPORT_REDIRECT_FAILED",
+            "IMPORT_REDIRECT_RESOLVED_NON_PRODUCT_PAGE",
+        }:
             return "invalid"
 
-        if error_code in {"IMPORT_PARSE_FAILED", "IMPORT_FETCH_FAILED"}:
+        if error_code in {"IMPORT_PARSE_FAILED", "IMPORT_FETCH_FAILED", "IMPORT_BLOCKED_OR_CHALLENGE_PAGE"}:
             return "extraction_failed"
 
         return "invalid"
