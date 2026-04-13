@@ -33,8 +33,14 @@ export function ProductOfferCard({ item, offer }: ProductOfferCardProps) {
 
   return (
     <article className="overflow-hidden rounded-[1.75rem] border border-black/5 bg-white shadow-glow">
-      <div className="relative aspect-[1/0.82] overflow-hidden bg-gradient-to-b from-orange-50 to-neutral-100">
-        <Image src={product.thumbnailUrl} alt={product.name} fill sizes="(max-width: 768px) 100vw, 420px" className="object-cover" />
+      <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-b from-orange-50 to-neutral-100">
+        <Image
+          src={product.thumbnailUrl}
+          alt={product.name}
+          fill
+          sizes="(max-width: 768px) 100vw, 420px"
+          className="object-contain p-4 md:p-5"
+        />
 
         <div className="absolute left-4 top-4 flex flex-wrap gap-2">
           {item.bestDiscountPercentage > 0 ? (
@@ -56,7 +62,6 @@ export function ProductOfferCard({ item, offer }: ProductOfferCardProps) {
 
         <div>
           <h3 className="font-display text-xl leading-tight">{product.name}</h3>
-          <p className="mt-2 text-sm leading-6 text-neutral-600">{product.description}</p>
         </div>
 
         <div className="flex items-end gap-3">
