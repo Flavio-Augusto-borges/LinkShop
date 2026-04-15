@@ -42,6 +42,15 @@ export type AdminImportedProduct = {
   originalPrice?: number;
 };
 
+export type AdminImportReviewDraft = {
+  id: string;
+  createdAt: string;
+  sourceUrl: string;
+  resolvedUrl?: string;
+  provider: string;
+  draft: AdminProductDraft;
+};
+
 export type AdminBatchImportItem = {
   url: string;
   resolvedUrl: string | null;
@@ -50,6 +59,25 @@ export type AdminBatchImportItem = {
   productId: string | null;
   productSlug: string | null;
   catalogItem: CatalogItem | null;
+};
+
+export type AdminReviewBatchImportItem = {
+  url: string;
+  resolvedUrl: string | null;
+  status: "pending_review" | "invalid" | "extraction_failed" | "not_supported";
+  message: string;
+  imported: AdminImportedProduct | null;
+};
+
+export type AdminReviewBatchImportResult = {
+  summary: {
+    total: number;
+    pendingReview: number;
+    invalid: number;
+    extractionFailed: number;
+    notSupported: number;
+  };
+  results: AdminReviewBatchImportItem[];
 };
 
 export type AdminBatchImportResult = {

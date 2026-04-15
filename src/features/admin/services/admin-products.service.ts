@@ -1,5 +1,10 @@
 import type { CatalogItem } from "@/features/catalog/types/catalog.types";
-import type { AdminBatchImportResult, AdminImportedProduct, AdminProductDraft } from "@/features/admin/types/admin.types";
+import type {
+  AdminBatchImportResult,
+  AdminImportedProduct,
+  AdminProductDraft,
+  AdminReviewBatchImportResult
+} from "@/features/admin/types/admin.types";
 import type { Offer } from "@/features/product/types/offer.types";
 import type { Product } from "@/features/product/types/product.types";
 import type { Store } from "@/features/product/types/store.types";
@@ -360,5 +365,60 @@ export const adminProductsService = {
       ...response,
       data: mapBackendBatchImportResponse(response.data)
     };
+  },
+
+  async importProductsToReview(urls: string[]): Promise<AdminReviewBatchImportResult> {
+    const normalizedUrls = urls.map((entry) => entry.trim()).filter(Boolean);
+    const results: AdminReviewBatchImportResult["results"] = [];
+
+    for (const url of normalizedUrls) {
+      const response = await this.importProductByUrl(url);
+
+      if (response.ok) {
+        results.push({
+          url,
+          resolvedUrl: response.data.resolvedUrl,
+          status: "pending_review",
+          message: "Importado para revisao antes da publicacao.",
+          imported: response.data
+        });
+        continue;
+      }
+
+      results.push({
+        url,
+        resolvedUrl: null,
+        status: mapImportErrorStatus(response.error.code),
+        message: response.error.message,
+        imported: null
+      });
+    }
+
+    return {
+      summary: {
+        total: normalizedUrls.length,
+        pendingReview: results.filter((entry) => entry.status === "pending_review").length,
+        invalid: results.filter((entry) => entry.status === "invalid").length,
+        extractionFailed: results.filter((entry) => entry.status === "extraction_failed").length,
+        notSupported: results.filter((entry) => entry.status === "not_supported").length
+      },
+      results
+    };
   }
 };
+
+function mapImportErrorStatus(code: string): AdminReviewBatchImportResult["results"][number]["status"] {
+  if (code === "IMPORT_PROVIDER_NOT_SUPPORTED") {
+    return "not_supported";
+  }
+
+  if (
+    code === "IMPORT_PARSE_FAILED" ||
+    code === "IMPORT_FETCH_FAILED" ||
+    code === "IMPORT_BLOCKED_OR_CHALLENGE_PAGE"
+  ) {
+    return "extraction_failed";
+  }
+
+  return "invalid";
+}

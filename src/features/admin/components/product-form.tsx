@@ -9,13 +9,26 @@ import type { CatalogItem } from "@/features/catalog/types/catalog.types";
 type ProductFormProps = {
   item: CatalogItem | null;
   onSave: (item: CatalogItem, draft: AdminProductDraft) => Promise<{ ok: boolean; message: string }>;
-  onImportByUrl: (url: string) => Promise<{ ok: boolean; message: string; imported?: AdminImportedProduct }>;
+  onImportByUrl?: (url: string) => Promise<{ ok: boolean; message: string; imported?: AdminImportedProduct }>;
   onCancel: () => void;
+  title?: string;
+  description?: string;
+  submitLabel?: string;
+  showImportSection?: boolean;
 };
 
 const emptyDraft = adminCatalogService.buildDraft();
 
-export function ProductForm({ item, onSave, onImportByUrl, onCancel }: ProductFormProps) {
+export function ProductForm({
+  item,
+  onSave,
+  onImportByUrl,
+  onCancel,
+  title,
+  description,
+  submitLabel,
+  showImportSection = true
+}: ProductFormProps) {
   const [draft, setDraft] = useState<AdminProductDraft>(emptyDraft);
   const [importUrl, setImportUrl] = useState("");
   const [isImporting, setIsImporting] = useState(false);
@@ -31,6 +44,10 @@ export function ProductForm({ item, onSave, onImportByUrl, onCancel }: ProductFo
   }, [item]);
 
   async function handleImport() {
+    if (!onImportByUrl) {
+      return;
+    }
+
     const normalizedUrl = importUrl.trim();
     if (!normalizedUrl) {
       return;
@@ -81,8 +98,8 @@ export function ProductForm({ item, onSave, onImportByUrl, onCancel }: ProductFo
     <form onSubmit={handleSubmit} className="glass-panel p-6">
       <div className="mb-5 flex items-center justify-between gap-4">
         <div>
-          <h2 className="font-display text-3xl">{item ? "Editar item do catálogo" : "Cadastrar item"}</h2>
-          <p className="mt-1 text-sm text-neutral-500">Formulário isolado dentro da feature admin.</p>
+          <h2 className="font-display text-3xl">{title ?? (item ? "Editar item do catálogo" : "Cadastrar item")}</h2>
+          <p className="mt-1 text-sm text-neutral-500">{description ?? "Formulário isolado dentro da feature admin."}</p>
         </div>
         {item ? (
           <button type="button" onClick={onCancel} className="text-sm font-medium text-coral">
@@ -92,30 +109,32 @@ export function ProductForm({ item, onSave, onImportByUrl, onCancel }: ProductFo
       </div>
 
       <div className="grid gap-4">
-        <div className="rounded-2xl border border-black/10 bg-white p-4">
-          <p className="text-sm font-semibold text-ink">Importar por link (produto ou afiliado)</p>
-          <p className="mt-1 text-xs text-neutral-500">
-            Cole uma URL direta ou afiliada. O sistema resolve o destino final (Mercado Livre) e preenche os campos para revisao manual.
-          </p>
+        {showImportSection ? (
+          <div className="rounded-2xl border border-black/10 bg-white p-4">
+            <p className="text-sm font-semibold text-ink">Importar por link (produto ou afiliado)</p>
+            <p className="mt-1 text-xs text-neutral-500">
+              Cole uma URL direta ou afiliada. O sistema resolve o destino final (Mercado Livre) e preenche os campos para revisao manual.
+            </p>
 
-          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-            <input
-              type="url"
-              value={importUrl}
-              onChange={(event) => setImportUrl(event.target.value)}
-              placeholder="https://produto.mercadolivre.com.br/..."
-              className="min-w-0 flex-1 rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm outline-none focus:border-coral/40"
-            />
-            <button
-              type="button"
-              onClick={() => void handleImport()}
-              disabled={isImporting || !importUrl.trim()}
-              className="inline-flex items-center justify-center rounded-full bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-60"
-            >
-              {isImporting ? "Importando..." : "Importar por link"}
-            </button>
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+              <input
+                type="url"
+                value={importUrl}
+                onChange={(event) => setImportUrl(event.target.value)}
+                placeholder="https://produto.mercadolivre.com.br/..."
+                className="min-w-0 flex-1 rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm outline-none focus:border-coral/40"
+              />
+              <button
+                type="button"
+                onClick={() => void handleImport()}
+                disabled={isImporting || !importUrl.trim() || !onImportByUrl}
+                className="inline-flex items-center justify-center rounded-full bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-60"
+              >
+                {isImporting ? "Importando..." : "Importar por link"}
+              </button>
+            </div>
           </div>
-        </div>
+        ) : null}
 
         <div className="grid gap-4 md:grid-cols-2">
           <label className="grid gap-2 text-sm text-neutral-600">
@@ -307,7 +326,7 @@ export function ProductForm({ item, onSave, onImportByUrl, onCancel }: ProductFo
           disabled={isSubmitting}
           className="inline-flex items-center justify-center rounded-full bg-coral px-5 py-3 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:opacity-70"
         >
-          {isSubmitting ? "Salvando..." : "Salvar item"}
+          {isSubmitting ? "Salvando..." : submitLabel ?? "Salvar item"}
         </button>
       </div>
     </form>

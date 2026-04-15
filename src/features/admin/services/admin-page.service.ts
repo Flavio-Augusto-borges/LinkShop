@@ -43,22 +43,28 @@ function buildDashboardFallback(message: string): AdminDashboardData {
 }
 
 export const adminPageService = {
+  async getDashboardData(): Promise<AdminDashboardData> {
+    const dashboardResponse = await adminDashboardService.getDashboardData();
+    return dashboardResponse.ok
+      ? dashboardResponse.data
+      : buildDashboardFallback("Falha ao conectar com o backend.");
+  },
+
+  async getCatalogData(): Promise<CatalogSearchResult> {
+    const catalogResponse = await catalogService.getCatalogBootstrap();
+    return catalogResponse.ok
+      ? catalogResponse.data
+      : buildCatalogFallback("Catalogo indisponivel no momento.").data;
+  },
+
   async getInitialData(): Promise<{
     catalog: CatalogSearchResult;
     dashboard: AdminDashboardData;
   }> {
-    const [catalogResponse, dashboardResponse] = await Promise.all([
-      catalogService.getCatalogBootstrap(),
-      adminDashboardService.getDashboardData()
+    const [catalog, dashboard] = await Promise.all([
+      this.getCatalogData(),
+      this.getDashboardData()
     ]);
-
-    const catalog = catalogResponse.ok
-      ? catalogResponse.data
-      : buildCatalogFallback("Catalogo indisponivel no momento.").data;
-
-    const dashboard = dashboardResponse.ok
-      ? dashboardResponse.data
-      : buildDashboardFallback("Falha ao conectar com o backend.");
 
     return { catalog, dashboard };
   }
