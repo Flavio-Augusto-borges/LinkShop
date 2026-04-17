@@ -5,6 +5,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { adminCatalogService } from "@/features/admin/services/admin-catalog.service";
 import type { AdminImportedProduct, AdminProductDraft } from "@/features/admin/types/admin.types";
 import type { CatalogItem } from "@/features/catalog/types/catalog.types";
+import { ConfirmationModal } from "@/shared/ui/confirmation-modal";
 
 type ProductFormProps = {
   item: CatalogItem | null;
@@ -15,6 +16,12 @@ type ProductFormProps = {
   description?: string;
   submitLabel?: string;
   showImportSection?: boolean;
+  saveConfirmation?: {
+    title: string;
+    description: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+  };
 };
 
 const emptyDraft = adminCatalogService.buildDraft();
@@ -27,12 +34,14 @@ export function ProductForm({
   title,
   description,
   submitLabel,
-  showImportSection = true
+  showImportSection = true,
+  saveConfirmation
 }: ProductFormProps) {
   const [draft, setDraft] = useState<AdminProductDraft>(emptyDraft);
   const [importUrl, setImportUrl] = useState("");
   const [isImporting, setIsImporting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
     message: string;
@@ -76,22 +85,34 @@ export function ProductForm({
     setIsImporting(false);
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function submitDraft() {
     setIsSubmitting(true);
     setFeedback(null);
 
     const result = await onSave(adminCatalogService.buildCatalogItemFromDraft(draft, item), draft);
-    setFeedback({
-      type: result.ok ? "success" : "error",
-      message: result.message
-    });
+    if (result.message) {
+      setFeedback({
+        type: result.ok ? "success" : "error",
+        message: result.message
+      });
+    }
 
     if (result.ok && !item) {
       setDraft(emptyDraft);
     }
 
     setIsSubmitting(false);
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (saveConfirmation) {
+      setShowSaveConfirmation(true);
+      return;
+    }
+
+    void submitDraft();
   }
 
   return (
@@ -329,6 +350,21 @@ export function ProductForm({
           {isSubmitting ? "Salvando..." : submitLabel ?? "Salvar item"}
         </button>
       </div>
+
+      {saveConfirmation ? (
+        <ConfirmationModal
+          open={showSaveConfirmation}
+          title={saveConfirmation.title}
+          description={saveConfirmation.description}
+          confirmLabel={saveConfirmation.confirmLabel ?? "Continuar"}
+          cancelLabel={saveConfirmation.cancelLabel ?? "Cancelar"}
+          onConfirm={() => {
+            setShowSaveConfirmation(false);
+            void submitDraft();
+          }}
+          onCancel={() => setShowSaveConfirmation(false)}
+        />
+      ) : null}
     </form>
   );
 }

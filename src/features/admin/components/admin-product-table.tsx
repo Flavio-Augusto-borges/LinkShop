@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import type { CatalogItem } from "@/features/catalog/types/catalog.types";
 import type { StoreId } from "@/features/product/types/store.types";
 import { formatCurrency, getSafeImageUrl, normalizeText } from "@/shared/lib/format";
+import { ConfirmationModal } from "@/shared/ui/confirmation-modal";
 
 type AdminProductTableProps = {
   items: CatalogItem[];
@@ -71,10 +72,18 @@ export function AdminProductTable({ items, importedProductIds = [], onEditMany, 
   const [expandedDescriptionIds, setExpandedDescriptionIds] = useState<string[]>([]);
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [selectionAction, setSelectionAction] = useState<SelectionAction | null>(null);
+  const [showEditConfirmation, setShowEditConfirmation] = useState(false);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
 
   const importedSet = useMemo(() => new Set(importedProductIds), [importedProductIds]);
   const selectedSet = useMemo(() => new Set(selectedProductIds), [selectedProductIds]);
   const selectionMode = selectionAction !== null;
+  const itemsById = useMemo(() => new Map(items.map((item) => [item.product.id, item])), [items]);
+
+  const selectedItems = useMemo(
+    () => selectedProductIds.map((productId) => itemsById.get(productId)).filter((item): item is CatalogItem => Boolean(item)),
+    [itemsById, selectedProductIds]
+  );
 
   const availableStores = useMemo(() => {
     const storeSet = new Set<StoreId>();
@@ -143,6 +152,8 @@ export function AdminProductTable({ items, importedProductIds = [], onEditMany, 
   function cancelSelection() {
     setSelectionAction(null);
     setSelectedProductIds([]);
+    setShowEditConfirmation(false);
+    setShowDeleteConfirmation(false);
   }
 
   function handleCardSelectionToggle(productId: string) {
@@ -153,37 +164,32 @@ export function AdminProductTable({ items, importedProductIds = [], onEditMany, 
     toggleProductSelection(productId);
   }
 
-  function handleConfirmEdit() {
+  function handleOpenEditConfirmation() {
     if (!selectedProductIds.length) {
       return;
     }
 
-    const shouldContinue = window.confirm(
-      selectedProductIds.length === 1
-        ? "Deseja editar o produto selecionado?"
-        : `Deseja iniciar a edicao dos ${selectedProductIds.length} produtos selecionados?\nA edicao sera iniciada pelo primeiro item da selecao.`
-    );
-    if (!shouldContinue) {
-      return;
-    }
-
-    onEditMany(selectedProductIds);
-    cancelSelection();
+    setShowEditConfirmation(true);
   }
 
-  async function handleConfirmDelete() {
+  function handleOpenDeleteConfirmation() {
     if (!selectedProductIds.length) {
       return;
     }
 
-    const shouldContinue = window.confirm(
-      `Deseja excluir os ${selectedProductIds.length} produtos selecionados?\nEssa acao nao pode ser desfeita.`
-    );
-    if (!shouldContinue) {
-      return;
-    }
+    setShowDeleteConfirmation(true);
+  }
 
+  function handleContinueEdit() {
+    setShowEditConfirmation(false);
+    onEditMany(selectedProductIds);
+  }
+
+  async function handleContinueDelete() {
+    const selectedIdsSet = new Set(selectedProductIds);
+    setShowDeleteConfirmation(false);
     await onDeleteMany(selectedProductIds);
+    setSelectedProductIds((current) => current.filter((productId) => !selectedIdsSet.has(productId)));
     cancelSelection();
   }
 
@@ -272,7 +278,7 @@ export function AdminProductTable({ items, importedProductIds = [], onEditMany, 
           </label>
           <button
             type="button"
-            onClick={() => (selectionAction === "edit" ? handleConfirmEdit() : void handleConfirmDelete())}
+            onClick={() => (selectionAction === "edit" ? handleOpenEditConfirmation() : handleOpenDeleteConfirmation())}
             disabled={!selectedProductIds.length}
             className={`inline-flex items-center rounded-full px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${
               selectionAction === "edit"
@@ -386,6 +392,46 @@ export function AdminProductTable({ items, importedProductIds = [], onEditMany, 
           </div>
         )}
       </div>
+
+      <ConfirmationModal
+        open={showEditConfirmation}
+        title="Confirmar fila de edicao"
+        description="Revise os produtos selecionados. Ao continuar, voce sera direcionado para a fila de edicao no admin."
+        confirmLabel="Continuar"
+        cancelLabel="Cancelar"
+        onConfirm={handleContinueEdit}
+        onCancel={() => setShowEditConfirmation(false)}
+      >
+        <div className="max-h-[300px] space-y-2 overflow-y-auto">
+          {selectedItems.map((item) => {
+            const thumbnailUrl = getSafeImageUrl(item.product.thumbnailUrl);
+
+            return (
+              <div key={item.product.id} className="flex items-center gap-3 rounded-xl border border-black/5 bg-black/5 p-2">
+                <div className="relative h-12 w-12 overflow-hidden rounded-lg bg-white">
+                  {thumbnailUrl ? (
+                    <Image src={thumbnailUrl} alt={item.product.name} fill sizes="48px" className="object-contain p-1" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-[10px] text-neutral-500">Sem imagem</div>
+                  )}
+                </div>
+                <p className="line-clamp-2 text-sm font-medium text-ink">{item.product.name}</p>
+              </div>
+            );
+          })}
+        </div>
+      </ConfirmationModal>
+
+      <ConfirmationModal
+        open={showDeleteConfirmation}
+        title="Confirmar exclusao em massa"
+        description={`A exclusao sera aplicada aos ${selectedProductIds.length} produtos selecionados. Essa acao nao pode ser desfeita.`}
+        confirmLabel="Excluir selecionados"
+        cancelLabel="Cancelar"
+        confirmTone="danger"
+        onConfirm={() => void handleContinueDelete()}
+        onCancel={() => setShowDeleteConfirmation(false)}
+      />
     </div>
   );
 }

@@ -11,7 +11,15 @@ const ADMIN_LINKS = [
 ];
 
 function isActive(pathname: string, href: string) {
-  return pathname === href;
+  if (pathname === href) {
+    return true;
+  }
+
+  if (href === "/admin/produtos" && pathname.startsWith("/admin/produtos/editar")) {
+    return true;
+  }
+
+  return false;
 }
 
 export function AdminSectionNav() {
