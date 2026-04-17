@@ -1,6 +1,7 @@
 import { catalogMockRepository } from "@/features/catalog/data/catalog.mock-repository";
 import type {
   CatalogCategorySummary,
+  CatalogHomeShelf,
   CatalogHomeSections,
   CatalogItem,
   CatalogSearchParams,
@@ -206,6 +207,60 @@ function buildCategorySummaries(items: CatalogItem[]): CatalogCategorySummary[] 
       lowestPrice: Math.min(...categoryItems.map((item) => item.lowestPrice))
     }))
     .sort((first, second) => second.productCount - first.productCount);
+}
+
+function buildHomeShelves(items: CatalogItem[], categories: CatalogCategorySummary[]): CatalogHomeShelf[] {
+  const featuredProducts = sortCatalogItems(items, "relevance").slice(0, 12);
+  const mostBoughtProducts = sortCatalogItems(items, "popularity").slice(0, 12);
+  const bestOfferProducts = sortCatalogItems(items, "best-discount").slice(0, 12);
+
+  const categoryShelves = categories.slice(0, 3).map((category) => ({
+    id: `category-${category.slug}`,
+    title: category.name,
+    description: `Selecao de ${category.name.toLowerCase()} com comparacao ativa no catalogo.`,
+    viewMoreHref: `/buscar?categoria=${encodeURIComponent(category.name)}`,
+    items: sortCatalogItems(
+      items.filter((item) => item.product.category === category.name),
+      "relevance"
+    ).slice(0, 12)
+  }));
+
+  return [
+    {
+      id: "featured",
+      title: "Destaques",
+      description: "Itens em evidência para descoberta rápida.",
+      viewMoreHref: "/buscar?ordem=relevance",
+      items: featuredProducts
+    },
+    {
+      id: "most-bought",
+      title: "Mais comprados",
+      description: "Produtos com maior tração de interesse recente.",
+      viewMoreHref: "/buscar?ordem=popularity",
+      items: mostBoughtProducts
+    },
+    {
+      id: "best-offers",
+      title: "Melhores ofertas",
+      description: "Produtos com descontos mais agressivos do momento.",
+      viewMoreHref: "/buscar?ordem=best-discount",
+      items: bestOfferProducts
+    },
+    ...categoryShelves
+  ].filter((shelf) => shelf.items.length > 0);
+}
+
+function buildHomeSectionsData(items: CatalogItem[]): CatalogHomeSections {
+  const categories = buildCategorySummaries(items).slice(0, 6);
+  const shelves = buildHomeShelves(items, categories);
+
+  return {
+    featuredProducts: sortCatalogItems(items, "popularity").slice(0, 12),
+    bestOffers: sortCatalogItems(items, "best-discount").slice(0, 12),
+    categories,
+    shelves
+  };
 }
 
 export const catalogService = {
@@ -414,31 +469,13 @@ export const catalogService = {
       const allItemsResponse = await this.getAllCatalogItems();
 
       if (allItemsResponse.ok) {
-        const items = allItemsResponse.data;
-        const featuredProducts = sortCatalogItems(items, "popularity").slice(0, 4);
-        const bestOffers = sortCatalogItems(items, "best-discount").slice(0, 4);
-        const categories = buildCategorySummaries(items).slice(0, 6);
-
         return {
           ...allItemsResponse,
-          data: {
-            featuredProducts,
-            bestOffers,
-            categories
-          }
+          data: buildHomeSectionsData(allItemsResponse.data)
         };
       }
     }
 
-    const items = buildCatalogItems();
-    const featuredProducts = sortCatalogItems(items, "popularity").slice(0, 4);
-    const bestOffers = sortCatalogItems(items, "best-discount").slice(0, 4);
-    const categories = buildCategorySummaries(items).slice(0, 6);
-
-    return mockSuccess({
-      featuredProducts,
-      bestOffers,
-      categories
-    });
+    return mockSuccess(buildHomeSectionsData(buildCatalogItems()));
   }
 };

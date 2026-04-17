@@ -53,8 +53,17 @@ export type CatalogCategorySummary = {
   lowestPrice: number;
 };
 
+export type CatalogHomeShelf = {
+  id: string;
+  title: string;
+  description: string;
+  viewMoreHref: string;
+  items: CatalogItem[];
+};
+
 export type CatalogHomeSections = {
   featuredProducts: CatalogItem[];
   bestOffers: CatalogItem[];
   categories: CatalogCategorySummary[];
+  shelves: CatalogHomeShelf[];
 };
