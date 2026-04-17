@@ -11,7 +11,7 @@ import { adminProductsService } from "@/features/admin/services/admin-products.s
 import type { AdminProductDraft } from "@/features/admin/types/admin.types";
 import type { CatalogItem, CatalogSearchResult } from "@/features/catalog/types/catalog.types";
 import { useCatalogStore } from "@/stores";
-import { getSafeImageUrl, normalizeText } from "@/shared/lib/format";
+import { getSafeImageUrl } from "@/shared/lib/format";
 import { SectionHeading } from "@/shared/ui/section-heading";
 
 type AdminProductEditQueueViewProps = {
@@ -33,8 +33,6 @@ export function AdminProductEditQueueView({ initialCatalog, initialQueueIds }: A
 
   const [queueIds, setQueueIds] = useState<string[]>(() => sanitizeQueueIds(initialQueueIds));
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
-  const [showAddPanel, setShowAddPanel] = useState(false);
-  const [addSearchQuery, setAddSearchQuery] = useState("");
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
     message: string;
@@ -80,31 +78,9 @@ export function AdminProductEditQueueView({ initialCatalog, initialQueueIds }: A
     [queueItems, selectedProductId]
   );
 
-  const queueSet = useMemo(() => new Set(queueIds), [queueIds]);
-
-  const addableItems = useMemo(() => {
-    const query = normalizeText(addSearchQuery.trim());
-    return items
-      .filter((item) => !queueSet.has(item.product.id))
-      .filter((item) => !query || normalizeText(item.product.name).includes(query))
-      .slice(0, 20);
-  }, [addSearchQuery, items, queueSet]);
-
   const selectedIndex = selectedItem ? queueItems.findIndex((item) => item.product.id === selectedItem.product.id) : -1;
   const hasPrevious = selectedIndex > 0;
   const hasNext = selectedIndex >= 0 && selectedIndex < queueItems.length - 1;
-
-  function handleAddToQueue(productId: string) {
-    if (!productId || queueSet.has(productId)) {
-      return;
-    }
-
-    setQueueIds((current) => [...current, productId]);
-    if (!selectedProductId) {
-      setSelectedProductId(productId);
-    }
-    setFeedback(null);
-  }
 
   function handleRemoveFromQueue(productId: string) {
     setQueueIds((current) => current.filter((id) => id !== productId));
@@ -166,15 +142,12 @@ export function AdminProductEditQueueView({ initialCatalog, initialQueueIds }: A
         >
           Voltar para gestao
         </Link>
-        <button
-          type="button"
-          onClick={() => setShowAddPanel((current) => !current)}
-          className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-ink text-xl font-bold text-white hover:bg-neutral-800"
-          aria-label="Adicionar mais produtos a fila"
-          title="Adicionar mais produtos"
+        <Link
+          href={`/admin/produtos?queue=${encodeURIComponent(queueIds.join(","))}`}
+          className="inline-flex items-center rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white hover:bg-neutral-800"
         >
-          +
-        </button>
+          Adicionar a fila
+        </Link>
         <span className="rounded-full bg-gold px-4 py-2 text-sm font-semibold text-ink">
           Na fila: {queueItems.length}
         </span>
@@ -189,47 +162,6 @@ export function AdminProductEditQueueView({ initialCatalog, initialQueueIds }: A
           }`}
         >
           {feedback.message}
-        </div>
-      ) : null}
-
-      {showAddPanel ? (
-        <div className="mb-6 rounded-[1.5rem] border border-black/10 bg-white p-4 shadow-glow">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <h3 className="font-display text-2xl">Adicionar produtos a fila</h3>
-            <button
-              type="button"
-              onClick={() => setShowAddPanel(false)}
-              className="rounded-full bg-black/5 px-3 py-1 text-xs font-semibold text-neutral-700"
-            >
-              Fechar
-            </button>
-          </div>
-
-          <input
-            type="search"
-            value={addSearchQuery}
-            onChange={(event) => setAddSearchQuery(event.target.value)}
-            placeholder="Buscar produto para adicionar"
-            className="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm outline-none transition focus:border-coral/40"
-          />
-
-          <div className="mt-3 grid gap-2 md:grid-cols-2">
-            {addableItems.length ? (
-              addableItems.map((item) => (
-                <button
-                  key={item.product.id}
-                  type="button"
-                  onClick={() => handleAddToQueue(item.product.id)}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-black/5 bg-black/5 px-3 py-2 text-left hover:border-black/10"
-                >
-                  <span className="line-clamp-2 text-sm font-medium text-ink">{item.product.name}</span>
-                  <span className="rounded-full bg-ink px-2 py-1 text-xs font-semibold text-white">Adicionar</span>
-                </button>
-              ))
-            ) : (
-              <p className="text-sm text-neutral-500">Nenhum item disponivel para adicionar com esse filtro.</p>
-            )}
-          </div>
         </div>
       ) : null}
 

@@ -13,9 +13,14 @@ import { SectionHeading } from "@/shared/ui/section-heading";
 
 type AdminProductsManageViewProps = {
   initialCatalog: CatalogSearchResult;
+  initialQueueIds?: string[];
 };
 
-export function AdminProductsManageView({ initialCatalog }: AdminProductsManageViewProps) {
+function sanitizeQueueIds(ids: string[]) {
+  return [...new Set(ids.map((id) => id.trim()).filter(Boolean))];
+}
+
+export function AdminProductsManageView({ initialCatalog, initialQueueIds = [] }: AdminProductsManageViewProps) {
   const router = useRouter();
   const items = useCatalogStore((state) => state.items);
   const initialized = useCatalogStore((state) => state.initialized);
@@ -26,6 +31,7 @@ export function AdminProductsManageView({ initialCatalog }: AdminProductsManageV
     type: "success" | "error";
     message: string;
   } | null>(null);
+  const existingQueueIds = sanitizeQueueIds(initialQueueIds);
 
   useEffect(() => {
     if (!initialized) {
@@ -43,8 +49,9 @@ export function AdminProductsManageView({ initialCatalog }: AdminProductsManageV
       return;
     }
 
+    const mergedQueueIds = [...new Set([...existingQueueIds, ...uniqueProductIds])];
     const params = new URLSearchParams({
-      ids: uniqueProductIds.join(",")
+      ids: mergedQueueIds.join(",")
     });
     router.push(`/admin/produtos/editar?${params.toString()}`);
   }
@@ -132,6 +139,20 @@ export function AdminProductsManageView({ initialCatalog }: AdminProductsManageV
           }`}
         >
           {feedback.message}
+        </div>
+      ) : null}
+
+      {existingQueueIds.length ? (
+        <div className="mb-6 rounded-[1.5rem] border border-lagoon/20 bg-lagoon/10 px-5 py-4 text-sm text-lagoon">
+          Selecione mais produtos para adicionar a fila atual ({existingQueueIds.length} item(ns) ja estavam na fila).
+          <div className="mt-3">
+            <Link
+              href={`/admin/produtos/editar?ids=${encodeURIComponent(existingQueueIds.join(","))}`}
+              className="inline-flex items-center rounded-full bg-lagoon px-4 py-2 text-xs font-semibold text-white hover:bg-teal-700"
+            >
+              Voltar para a fila atual
+            </Link>
+          </div>
         </div>
       ) : null}
 
