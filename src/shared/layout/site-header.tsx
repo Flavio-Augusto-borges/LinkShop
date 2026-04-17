@@ -23,6 +23,10 @@ export function SiteHeader() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isHiddenOnScroll, setIsHiddenOnScroll] = useState(false);
   const lastScrollYRef = useRef(0);
+  const isHiddenRef = useRef(false);
+  const downTravelRef = useRef(0);
+  const upTravelRef = useRef(0);
+  const frameRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -38,34 +42,80 @@ export function SiteHeader() {
   }, [pathname]);
 
   useEffect(() => {
+    setIsHiddenOnScroll(false);
+    isHiddenRef.current = false;
+    downTravelRef.current = 0;
+    upTravelRef.current = 0;
+  }, [pathname]);
+
+  useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
 
     lastScrollYRef.current = window.scrollY;
     setIsHiddenOnScroll(false);
+    isHiddenRef.current = false;
 
     function handleScroll() {
-      const currentY = window.scrollY;
-      const delta = currentY - lastScrollYRef.current;
-
-      if (currentY <= 24) {
-        setIsHiddenOnScroll(false);
-        lastScrollYRef.current = currentY;
+      if (frameRef.current !== null) {
         return;
       }
 
-      if (delta > 6) {
-        setIsHiddenOnScroll(true);
-      } else if (delta < -6) {
-        setIsHiddenOnScroll(false);
-      }
+      frameRef.current = window.requestAnimationFrame(() => {
+        frameRef.current = null;
 
-      lastScrollYRef.current = currentY;
+        const currentY = window.scrollY;
+        const delta = currentY - lastScrollYRef.current;
+
+        if (Math.abs(delta) < 1.5) {
+          return;
+        }
+
+        if (currentY <= 20) {
+          downTravelRef.current = 0;
+          upTravelRef.current = 0;
+          if (isHiddenRef.current) {
+            isHiddenRef.current = false;
+            setIsHiddenOnScroll(false);
+          }
+          lastScrollYRef.current = currentY;
+          return;
+        }
+
+        if (delta > 0) {
+          downTravelRef.current += delta;
+          upTravelRef.current = 0;
+
+          if (!isHiddenRef.current && currentY > 84 && downTravelRef.current >= 26) {
+            isHiddenRef.current = true;
+            setIsHiddenOnScroll(true);
+            downTravelRef.current = 0;
+          }
+        } else {
+          upTravelRef.current += Math.abs(delta);
+          downTravelRef.current = 0;
+
+          if (isHiddenRef.current && upTravelRef.current >= 9) {
+            isHiddenRef.current = false;
+            setIsHiddenOnScroll(false);
+            upTravelRef.current = 0;
+          }
+        }
+
+        lastScrollYRef.current = currentY;
+      });
     }
 
     window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (frameRef.current !== null) {
+        window.cancelAnimationFrame(frameRef.current);
+        frameRef.current = null;
+      }
+    };
   }, []);
 
   function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
@@ -91,8 +141,8 @@ export function SiteHeader() {
 
   return (
     <header
-      className={`glass-panel sticky top-2 z-30 px-3 py-3 transition-transform duration-200 ease-out md:px-5 md:py-4 ${
-        isHiddenOnScroll ? "-translate-y-[130%]" : "translate-y-0"
+      className={`glass-panel sticky top-2 z-30 px-3 py-3 transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform md:px-5 md:py-4 ${
+        isHiddenOnScroll ? "-translate-y-[115%] opacity-95" : "translate-y-0 opacity-100"
       }`}
     >
       <div className="grid gap-3">
