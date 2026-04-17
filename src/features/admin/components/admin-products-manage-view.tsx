@@ -90,6 +90,77 @@ export function AdminProductsManageView({ initialCatalog }: AdminProductsManageV
     setFeedback({ type: "success", message: "Produto removido com sucesso." });
   }
 
+  function handleEditManyCatalogItems(productIds: string[]) {
+    const [firstProductId] = productIds;
+    if (!firstProductId) {
+      return;
+    }
+
+    setFeedback(null);
+    setEditingProductId(firstProductId);
+
+    if (productIds.length > 1) {
+      setFeedback({
+        type: "success",
+        message: `Edicao iniciada pelo primeiro item selecionado (${productIds.length} itens selecionados).`
+      });
+    }
+  }
+
+  async function handleDeleteManyCatalogItems(productIds: string[]) {
+    const uniqueProductIds = [...new Set(productIds)];
+    if (!uniqueProductIds.length) {
+      return;
+    }
+
+    setFeedback(null);
+    let removedCount = 0;
+    let failedCount = 0;
+    let firstErrorMessage: string | null = null;
+
+    for (const productId of uniqueProductIds) {
+      const response = await adminProductsService.deleteProduct(productId);
+      if (!response.ok) {
+        failedCount += 1;
+        if (!firstErrorMessage) {
+          firstErrorMessage = response.error.message;
+        }
+        continue;
+      }
+
+      removeCatalogItem(productId);
+      removedCount += 1;
+    }
+
+    if (editingProductId && uniqueProductIds.includes(editingProductId)) {
+      setEditingProductId(null);
+    }
+
+    if (removedCount > 0 && failedCount === 0) {
+      setFeedback({
+        type: "success",
+        message:
+          removedCount === 1
+            ? "1 produto removido com sucesso."
+            : `${removedCount} produtos removidos com sucesso.`
+      });
+      return;
+    }
+
+    if (removedCount > 0 && failedCount > 0) {
+      setFeedback({
+        type: "error",
+        message: `${removedCount} removidos e ${failedCount} falharam. ${firstErrorMessage ?? ""}`.trim()
+      });
+      return;
+    }
+
+    setFeedback({
+      type: "error",
+      message: firstErrorMessage ?? "Nao foi possivel remover os produtos selecionados."
+    });
+  }
+
   return (
     <section className="section-shell">
       <SectionHeading
@@ -146,6 +217,8 @@ export function AdminProductsManageView({ initialCatalog }: AdminProductsManageV
             onDelete={(productId) => {
               void handleDeleteCatalogItem(productId);
             }}
+            onEditMany={handleEditManyCatalogItems}
+            onDeleteMany={handleDeleteManyCatalogItems}
           />
         </div>
       ) : (
@@ -159,6 +232,8 @@ export function AdminProductsManageView({ initialCatalog }: AdminProductsManageV
             onDelete={(productId) => {
               void handleDeleteCatalogItem(productId);
             }}
+            onEditMany={handleEditManyCatalogItems}
+            onDeleteMany={handleDeleteManyCatalogItems}
           />
         </div>
       )}

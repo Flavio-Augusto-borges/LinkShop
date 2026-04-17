@@ -12,6 +12,8 @@ type AdminProductTableProps = {
   importedProductIds?: string[];
   onEdit: (item: CatalogItem) => void;
   onDelete: (productId: string) => void;
+  onEditMany: (productIds: string[]) => void;
+  onDeleteMany: (productIds: string[]) => Promise<void> | void;
 };
 
 type AdminTableSort = "recent" | "name" | "price";
@@ -39,7 +41,38 @@ function getMostRecentSyncTimestamp(item: CatalogItem): number {
   }, 0);
 }
 
-export function AdminProductTable({ items, importedProductIds = [], onEdit, onDelete }: AdminProductTableProps) {
+function PencilIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-none stroke-current stroke-[1.8]">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 20h9" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5Z"
+      />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-none stroke-current stroke-[1.8]">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 6h18" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8 6V4h8v2" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19 6l-1 14H6L5 6" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M10 11v6M14 11v6" />
+    </svg>
+  );
+}
+
+export function AdminProductTable({
+  items,
+  importedProductIds = [],
+  onEdit,
+  onDelete,
+  onEditMany,
+  onDeleteMany
+}: AdminProductTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [storeFilter, setStoreFilter] = useState<StoreId | "all">("all");
   const [sortBy, setSortBy] = useState<AdminTableSort>("recent");
@@ -80,30 +113,22 @@ export function AdminProductTable({ items, importedProductIds = [], onEdit, onDe
       return getMostRecentSyncTimestamp(second) - getMostRecentSyncTimestamp(first);
     });
   }, [items, searchQuery, sortBy, storeFilter]);
-  const visibleProductIds = useMemo(
-    () => filteredItems.map((item) => item.product.id),
-    [filteredItems]
-  );
+
+  const visibleProductIds = useMemo(() => filteredItems.map((item) => item.product.id), [filteredItems]);
   const allVisibleSelected = useMemo(
-    () =>
-      visibleProductIds.length > 0 &&
-      visibleProductIds.every((productId) => selectedSet.has(productId)),
+    () => visibleProductIds.length > 0 && visibleProductIds.every((productId) => selectedSet.has(productId)),
     [selectedSet, visibleProductIds]
   );
 
   function toggleDescription(productId: string) {
     setExpandedDescriptionIds((current) =>
-      current.includes(productId)
-        ? current.filter((id) => id !== productId)
-        : [...current, productId]
+      current.includes(productId) ? current.filter((id) => id !== productId) : [...current, productId]
     );
   }
 
   function toggleProductSelection(productId: string) {
     setSelectedProductIds((current) =>
-      current.includes(productId)
-        ? current.filter((id) => id !== productId)
-        : [...current, productId]
+      current.includes(productId) ? current.filter((id) => id !== productId) : [...current, productId]
     );
   }
 
@@ -125,6 +150,40 @@ export function AdminProductTable({ items, importedProductIds = [], onEdit, onDe
     toggleProductSelection(productId);
   }
 
+  function handleBulkEdit() {
+    if (!selectedProductIds.length) {
+      return;
+    }
+
+    const shouldContinue = window.confirm(
+      selectedProductIds.length === 1
+        ? "Deseja editar o produto selecionado?"
+        : `Deseja iniciar a edicao dos ${selectedProductIds.length} produtos selecionados?\nA edicao sera iniciada pelo primeiro item da selecao.`
+    );
+    if (!shouldContinue) {
+      return;
+    }
+
+    onEditMany(selectedProductIds);
+  }
+
+  async function handleBulkDelete() {
+    if (!selectedProductIds.length) {
+      return;
+    }
+
+    const shouldContinue = window.confirm(
+      `Deseja excluir os ${selectedProductIds.length} produtos selecionados?\nEssa acao nao pode ser desfeita.`
+    );
+    if (!shouldContinue) {
+      return;
+    }
+
+    const selectedIdsSet = new Set(selectedProductIds);
+    await onDeleteMany(selectedProductIds);
+    setSelectedProductIds((current) => current.filter((productId) => !selectedIdsSet.has(productId)));
+  }
+
   return (
     <div className="glass-panel p-6">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
@@ -139,6 +198,24 @@ export function AdminProductTable({ items, importedProductIds = [], onEdit, onDe
         <div className="flex flex-wrap gap-2">
           {selectionMode ? (
             <>
+              {selectedProductIds.length ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => void handleBulkEdit()}
+                    className="inline-flex items-center rounded-full bg-lagoon/10 px-4 py-2 text-sm font-semibold text-lagoon hover:bg-lagoon/20"
+                  >
+                    Editar selecionados
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleBulkDelete()}
+                    className="inline-flex items-center rounded-full bg-coral/10 px-4 py-2 text-sm font-semibold text-coral hover:bg-coral/20"
+                  >
+                    Excluir selecionados
+                  </button>
+                </>
+              ) : null}
               <label className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-4 py-2 text-sm text-neutral-700">
                 <input
                   type="checkbox"
@@ -211,6 +288,36 @@ export function AdminProductTable({ items, importedProductIds = [], onEdit, onDe
                 } ${selectionMode ? "cursor-pointer" : ""}`}
                 onClick={() => handleCardSelectionToggle(item.product.id)}
               >
+                <div className="mb-3 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    aria-label={`Editar ${item.product.name}`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onEdit(item);
+                    }}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-lagoon/10 text-lagoon hover:bg-lagoon/20"
+                  >
+                    <PencilIcon />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Excluir ${item.product.name}`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      const shouldDelete = window.confirm(
+                        `Deseja excluir "${item.product.name}"?\nEssa acao nao pode ser desfeita.`
+                      );
+                      if (shouldDelete) {
+                        onDelete(item.product.id);
+                      }
+                    }}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-coral/10 text-coral hover:bg-coral/20"
+                  >
+                    <TrashIcon />
+                  </button>
+                </div>
+
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div className="flex items-start gap-3 md:min-w-[200px]">
                     {selectionMode ? (
@@ -224,13 +331,7 @@ export function AdminProductTable({ items, importedProductIds = [], onEdit, onDe
                     ) : null}
                     <div className="relative h-20 w-20 overflow-hidden rounded-xl bg-black/5">
                       {thumbnailUrl ? (
-                        <Image
-                          src={thumbnailUrl}
-                          alt={item.product.name}
-                          fill
-                          sizes="80px"
-                          className="object-contain p-2"
-                        />
+                        <Image src={thumbnailUrl} alt={item.product.name} fill sizes="80px" className="object-contain p-2" />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-[10px] text-neutral-500">
                           Sem imagem
@@ -286,29 +387,6 @@ export function AdminProductTable({ items, importedProductIds = [], onEdit, onDe
                       {item.bestDiscountPercentage ? (
                         <p className="text-xs font-semibold text-lagoon">{item.bestDiscountPercentage}% OFF</p>
                       ) : null}
-                    </div>
-
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          onEdit(item);
-                        }}
-                        className="rounded-full bg-lagoon/10 px-4 py-2 text-sm font-semibold text-lagoon"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          onDelete(item.product.id);
-                        }}
-                        className="rounded-full bg-coral/10 px-4 py-2 text-sm font-semibold text-coral"
-                      >
-                        Excluir
-                      </button>
                     </div>
                   </div>
                 </div>
