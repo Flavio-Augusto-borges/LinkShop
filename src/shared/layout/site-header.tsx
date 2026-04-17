@@ -26,7 +26,14 @@ export function SiteHeader() {
   const isHiddenRef = useRef(false);
   const downTravelRef = useRef(0);
   const upTravelRef = useRef(0);
+  const hasHiddenSinceTopRef = useRef(false);
   const frameRef = useRef<number | null>(null);
+
+  const TOP_STICKY_ZONE = 72;
+  const INITIAL_HIDE_THRESHOLD = 28;
+  const FREE_HIDE_THRESHOLD = 10;
+  const FREE_SHOW_THRESHOLD = 6;
+  const NOISE_THRESHOLD = 1.5;
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -46,6 +53,7 @@ export function SiteHeader() {
     isHiddenRef.current = false;
     downTravelRef.current = 0;
     upTravelRef.current = 0;
+    hasHiddenSinceTopRef.current = false;
   }, [pathname]);
 
   useEffect(() => {
@@ -56,6 +64,9 @@ export function SiteHeader() {
     lastScrollYRef.current = window.scrollY;
     setIsHiddenOnScroll(false);
     isHiddenRef.current = false;
+    downTravelRef.current = 0;
+    upTravelRef.current = 0;
+    hasHiddenSinceTopRef.current = false;
 
     function handleScroll() {
       if (frameRef.current !== null) {
@@ -68,13 +79,14 @@ export function SiteHeader() {
         const currentY = window.scrollY;
         const delta = currentY - lastScrollYRef.current;
 
-        if (Math.abs(delta) < 1.5) {
+        if (Math.abs(delta) < NOISE_THRESHOLD) {
           return;
         }
 
-        if (currentY <= 20) {
+        if (currentY <= TOP_STICKY_ZONE) {
           downTravelRef.current = 0;
           upTravelRef.current = 0;
+          hasHiddenSinceTopRef.current = false;
           if (isHiddenRef.current) {
             isHiddenRef.current = false;
             setIsHiddenOnScroll(false);
@@ -87,16 +99,18 @@ export function SiteHeader() {
           downTravelRef.current += delta;
           upTravelRef.current = 0;
 
-          if (!isHiddenRef.current && currentY > 84 && downTravelRef.current >= 26) {
+          const hideThreshold = hasHiddenSinceTopRef.current ? FREE_HIDE_THRESHOLD : INITIAL_HIDE_THRESHOLD;
+          if (!isHiddenRef.current && downTravelRef.current >= hideThreshold) {
             isHiddenRef.current = true;
             setIsHiddenOnScroll(true);
+            hasHiddenSinceTopRef.current = true;
             downTravelRef.current = 0;
           }
         } else {
           upTravelRef.current += Math.abs(delta);
           downTravelRef.current = 0;
 
-          if (isHiddenRef.current && upTravelRef.current >= 9) {
+          if (isHiddenRef.current && upTravelRef.current >= FREE_SHOW_THRESHOLD) {
             isHiddenRef.current = false;
             setIsHiddenOnScroll(false);
             upTravelRef.current = 0;
