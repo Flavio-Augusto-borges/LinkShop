@@ -150,23 +150,6 @@ export function AdminProductsManageView({ initialCatalog }: AdminProductsManageV
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="rounded-[1.5rem] border border-black/10 bg-white p-5 text-sm text-neutral-600 shadow-glow">
-            Esta area e focada em produtos publicados. Para criar novos itens, use as rotas dedicadas:
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Link href="/admin/produtos/novo" className="font-semibold text-coral">
-                /admin/produtos/novo
-              </Link>
-              <span>•</span>
-              <Link href="/admin/produtos/importar" className="font-semibold text-coral">
-                /admin/produtos/importar
-              </Link>
-              <span>•</span>
-              <Link href="/admin/produtos/revisar" className="font-semibold text-coral">
-                /admin/produtos/revisar
-              </Link>
-            </div>
-          </div>
-
           <AdminProductTable
             items={items}
             onEdit={(item) => {

@@ -45,6 +45,7 @@ export function AdminProductTable({ items, importedProductIds = [], onEdit, onDe
   const [sortBy, setSortBy] = useState<AdminTableSort>("recent");
   const [expandedDescriptionIds, setExpandedDescriptionIds] = useState<string[]>([]);
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [selectionMode, setSelectionMode] = useState(false);
 
   const importedSet = useMemo(() => new Set(importedProductIds), [importedProductIds]);
   const selectedSet = useMemo(() => new Set(selectedProductIds), [selectedProductIds]);
@@ -116,6 +117,14 @@ export function AdminProductTable({ items, importedProductIds = [], onEdit, onDe
     });
   }
 
+  function handleCardSelectionToggle(productId: string) {
+    if (!selectionMode) {
+      return;
+    }
+
+    toggleProductSelection(productId);
+  }
+
   return (
     <div className="glass-panel p-6">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
@@ -124,18 +133,40 @@ export function AdminProductTable({ items, importedProductIds = [], onEdit, onDe
           <p className="mt-1 text-sm text-neutral-500">
             {filteredItems.length} de {items.length} itens visiveis no catalogo
           </p>
-          <p className="mt-1 text-sm text-neutral-500">Selecionados: {selectedProductIds.length}</p>
+          {selectionMode ? <p className="mt-1 text-sm text-neutral-500">Selecionados: {selectedProductIds.length}</p> : null}
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <label className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-4 py-2 text-sm text-neutral-700">
-            <input
-              type="checkbox"
-              checked={allVisibleSelected}
-              onChange={(event) => toggleSelectAllVisible(event.target.checked)}
-            />
-            Selecionar todos
-          </label>
+          {selectionMode ? (
+            <>
+              <label className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-4 py-2 text-sm text-neutral-700">
+                <input
+                  type="checkbox"
+                  checked={allVisibleSelected}
+                  onChange={(event) => toggleSelectAllVisible(event.target.checked)}
+                />
+                Selecionar todos
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectionMode(false);
+                  setSelectedProductIds([]);
+                }}
+                className="inline-flex items-center rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-black/5"
+              >
+                Cancelar selecao
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setSelectionMode(true)}
+              className="inline-flex items-center rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-black/5"
+            >
+              Selecionar produtos
+            </button>
+          )}
           <input
             type="search"
             value={searchQuery}
@@ -177,24 +208,28 @@ export function AdminProductTable({ items, importedProductIds = [], onEdit, onDe
                 key={item.product.id}
                 className={`rounded-[1.5rem] border bg-white p-5 ${
                   selectedSet.has(item.product.id) ? "border-coral/30" : "border-black/5"
-                }`}
+                } ${selectionMode ? "cursor-pointer" : ""}`}
+                onClick={() => handleCardSelectionToggle(item.product.id)}
               >
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                  <div className="flex items-start gap-3 md:min-w-[180px]">
-                    <input
-                      type="checkbox"
-                      checked={selectedSet.has(item.product.id)}
-                      onChange={() => toggleProductSelection(item.product.id)}
-                      className="mt-1"
-                    />
-                    <div className="relative h-16 w-16 overflow-hidden rounded-xl bg-black/5">
+                  <div className="flex items-start gap-3 md:min-w-[200px]">
+                    {selectionMode ? (
+                      <input
+                        type="checkbox"
+                        checked={selectedSet.has(item.product.id)}
+                        onChange={() => toggleProductSelection(item.product.id)}
+                        onClick={(event) => event.stopPropagation()}
+                        className="mt-1"
+                      />
+                    ) : null}
+                    <div className="relative h-20 w-20 overflow-hidden rounded-xl bg-black/5">
                       {thumbnailUrl ? (
                         <Image
                           src={thumbnailUrl}
                           alt={item.product.name}
                           fill
-                          sizes="64px"
-                          className="object-contain p-1"
+                          sizes="80px"
+                          className="object-contain p-2"
                         />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-[10px] text-neutral-500">
@@ -232,7 +267,10 @@ export function AdminProductTable({ items, importedProductIds = [], onEdit, onDe
                       {item.product.description.length > 140 ? (
                         <button
                           type="button"
-                          onClick={() => toggleDescription(item.product.id)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            toggleDescription(item.product.id);
+                          }}
                           className="mt-1 text-xs font-semibold text-coral hover:underline"
                         >
                           {expandedDescriptionIds.includes(item.product.id) ? "Ver menos" : "Ver mais"}
@@ -253,14 +291,20 @@ export function AdminProductTable({ items, importedProductIds = [], onEdit, onDe
                     <div className="flex gap-2">
                       <button
                         type="button"
-                        onClick={() => onEdit(item)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onEdit(item);
+                        }}
                         className="rounded-full bg-lagoon/10 px-4 py-2 text-sm font-semibold text-lagoon"
                       >
                         Editar
                       </button>
                       <button
                         type="button"
-                        onClick={() => onDelete(item.product.id)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onDelete(item.product.id);
+                        }}
                         className="rounded-full bg-coral/10 px-4 py-2 text-sm font-semibold text-coral"
                       >
                         Excluir
