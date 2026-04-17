@@ -1,17 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { useAuthStore, useCartStore, useFavoritesStore } from "@/stores";
 import { getPreferenceOwnerId } from "@/shared/lib/identity";
-
-const roleLabels = {
-  guest: "Visitante",
-  user: "Usuario",
-  admin: "Administrador"
-} as const;
 
 export function SiteHeader() {
   const pathname = usePathname();
@@ -20,14 +14,15 @@ export function SiteHeader() {
   const signOut = useAuthStore((state) => state.signOut);
   const favorites = useFavoritesStore((state) => state.favorites);
   const carts = useCartStore((state) => state.carts);
+
   const role = session?.user.role ?? "guest";
   const isAdmin = role === "admin";
   const ownerId = useMemo(() => getPreferenceOwnerId(session), [session]);
   const favoritesCount = favorites.filter((favorite) => favorite.userId === ownerId).length;
   const cart = carts.find((entry) => entry.ownerId === ownerId);
-  const accountHref = session ? "/conta" : "/auth";
-  const accountLabel = session ? "Conta" : "Entrar";
   const [searchQuery, setSearchQuery] = useState("");
+  const [isHiddenOnScroll, setIsHiddenOnScroll] = useState(false);
+  const lastScrollYRef = useRef(0);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -41,6 +36,37 @@ export function SiteHeader() {
       setSearchQuery("");
     }
   }, [pathname]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    lastScrollYRef.current = window.scrollY;
+    setIsHiddenOnScroll(false);
+
+    function handleScroll() {
+      const currentY = window.scrollY;
+      const delta = currentY - lastScrollYRef.current;
+
+      if (currentY <= 24) {
+        setIsHiddenOnScroll(false);
+        lastScrollYRef.current = currentY;
+        return;
+      }
+
+      if (delta > 6) {
+        setIsHiddenOnScroll(true);
+      } else if (delta < -6) {
+        setIsHiddenOnScroll(false);
+      }
+
+      lastScrollYRef.current = currentY;
+    }
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -56,89 +82,95 @@ export function SiteHeader() {
   }
 
   function navItemClass(href: string) {
-    const isActive =
-      pathname === href || (href !== "/" && pathname.startsWith(`${href}/`));
+    const isActive = pathname === href || (href !== "/" && pathname.startsWith(`${href}/`));
 
-    return `rounded-full px-3 py-2 transition ${
+    return `rounded-full px-3 py-1.5 text-sm transition ${
       isActive ? "bg-black/10 text-ink" : "text-neutral-600 hover:bg-black/5"
     }`;
   }
 
   return (
-    <header className="glass-panel sticky top-4 z-30 px-5 py-4">
-      <div className="grid gap-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <Link href="/" className="flex items-center gap-3">
-            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-coral to-orange-400 font-display text-sm font-bold tracking-[0.2em] text-white">
+    <header
+      className={`glass-panel sticky top-2 z-30 px-3 py-3 transition-transform duration-200 ease-out md:px-5 md:py-4 ${
+        isHiddenOnScroll ? "-translate-y-[130%]" : "translate-y-0"
+      }`}
+    >
+      <div className="grid gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <Link href="/" className="flex items-center gap-2.5">
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-coral to-orange-400 font-display text-xs font-bold tracking-[0.16em] text-white md:h-10 md:w-10">
               LS
             </span>
             <div>
-              <strong className="block font-display text-base">LinkShop</strong>
-              <span className="text-sm text-neutral-500">Comparador de precos e ofertas</span>
+              <strong className="block font-display text-sm md:text-base">LinkShop</strong>
+              <span className="hidden text-xs text-neutral-500 md:block">Comparador de precos e ofertas</span>
             </div>
           </Link>
 
-          <form onSubmit={handleSearchSubmit} className="flex w-full max-w-2xl gap-2">
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Buscar produto, marca ou categoria"
-              className="min-w-0 flex-1 rounded-full border border-black/10 bg-white px-4 py-3 text-sm outline-none transition focus:border-coral/40"
-            />
-            <button
-              type="submit"
-              className="inline-flex items-center justify-center rounded-full bg-coral px-4 py-3 text-sm font-semibold text-white transition hover:bg-orange-600"
-            >
-              Buscar
-            </button>
-          </form>
-        </div>
-
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <nav className="flex flex-wrap items-center gap-2 text-sm text-neutral-600">
-            <Link href="/" className={navItemClass("/")}>
-              Inicio
-            </Link>
-            <Link href="/buscar" className={navItemClass("/buscar")}>
-              Buscar
-            </Link>
-            <Link href="/favoritos" className={navItemClass("/favoritos")}>
-              Favoritos ({favoritesCount})
-            </Link>
-            <Link href="/lista" className={navItemClass("/lista")}>
-              Carrinho ({cart?.totalItems ?? 0})
-            </Link>
-            <Link href={accountHref} className={navItemClass(accountHref)}>
-              {accountLabel}
-            </Link>
+          <div className="flex items-center gap-2">
             {isAdmin ? (
-              <Link href="/admin" className={navItemClass("/admin")}>
+              <Link
+                href="/admin"
+                className="rounded-full bg-black/5 px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-black/10"
+              >
                 Admin
               </Link>
             ) : null}
-          </nav>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="rounded-full bg-black/5 px-3 py-2 text-xs font-bold uppercase tracking-[0.18em] text-neutral-700">
-              {roleLabels[role]}
-            </span>
             {session ? (
-              <span className="max-w-[14rem] truncate text-sm text-neutral-500">{session.user.email}</span>
+              <>
+                <Link href="/conta" className="rounded-full bg-black/5 px-3 py-1.5 text-xs font-semibold text-ink hover:bg-black/10">
+                  Conta
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => void signOut()}
+                  className="rounded-full bg-black/5 px-3 py-1.5 text-xs font-semibold text-ink hover:bg-black/10"
+                >
+                  Sair
+                </button>
+              </>
             ) : (
-              <span className="text-sm text-neutral-500">Navegando sem login</span>
-            )}
-            {session ? (
-              <button
-                type="button"
-                onClick={() => void signOut()}
-                className="inline-flex items-center justify-center rounded-full bg-black/5 px-4 py-2 text-sm font-semibold text-ink transition hover:bg-black/10"
+              <Link
+                href="/auth"
+                className="rounded-full bg-coral px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-600"
               >
-                Sair
-              </button>
-            ) : null}
+                Entrar / Cadastrar
+              </Link>
+            )}
           </div>
         </div>
+
+        <form onSubmit={handleSearchSubmit} className="flex gap-2">
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Buscar produto, marca ou categoria"
+            className="min-w-0 flex-1 rounded-full border border-black/10 bg-white px-4 py-2 text-sm outline-none transition focus:border-coral/40"
+          />
+          <button
+            type="submit"
+            className="inline-flex items-center justify-center rounded-full bg-coral px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600"
+          >
+            Buscar
+          </button>
+        </form>
+
+        <nav className="flex flex-wrap items-center gap-1.5 text-sm text-neutral-600">
+          <Link href="/" className={navItemClass("/")}>
+            Inicio
+          </Link>
+          <Link href="/buscar" className={navItemClass("/buscar")}>
+            Buscar
+          </Link>
+          <Link href="/favoritos" className={navItemClass("/favoritos")}>
+            Favoritos ({favoritesCount})
+          </Link>
+          <Link href="/lista" className={navItemClass("/lista")}>
+            Carrinho ({cart?.totalItems ?? 0})
+          </Link>
+        </nav>
       </div>
     </header>
   );
