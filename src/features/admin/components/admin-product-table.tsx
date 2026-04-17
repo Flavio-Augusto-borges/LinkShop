@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type { CatalogItem } from "@/features/catalog/types/catalog.types";
 import type { StoreId } from "@/features/product/types/store.types";
@@ -11,6 +11,8 @@ import { ConfirmationModal } from "@/shared/ui/confirmation-modal";
 type AdminProductTableProps = {
   items: CatalogItem[];
   importedProductIds?: string[];
+  initialSelectedProductIds?: string[];
+  initialSelectionAction?: SelectionAction | null;
   onEditMany: (productIds: string[]) => void;
   onDeleteMany: (productIds: string[]) => Promise<void> | void;
 };
@@ -65,13 +67,29 @@ function TrashIcon() {
   );
 }
 
-export function AdminProductTable({ items, importedProductIds = [], onEditMany, onDeleteMany }: AdminProductTableProps) {
+function sanitizeProductIds(ids: string[]) {
+  return [...new Set(ids.map((id) => id.trim()).filter(Boolean))];
+}
+
+export function AdminProductTable({
+  items,
+  importedProductIds = [],
+  initialSelectedProductIds = [],
+  initialSelectionAction = null,
+  onEditMany,
+  onDeleteMany
+}: AdminProductTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [storeFilter, setStoreFilter] = useState<StoreId | "all">("all");
   const [sortBy, setSortBy] = useState<AdminTableSort>("recent");
   const [expandedDescriptionIds, setExpandedDescriptionIds] = useState<string[]>([]);
-  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
-  const [selectionAction, setSelectionAction] = useState<SelectionAction | null>(null);
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>(() => sanitizeProductIds(initialSelectedProductIds));
+  const [selectionAction, setSelectionAction] = useState<SelectionAction | null>(() => {
+    if (initialSelectionAction) {
+      return initialSelectionAction;
+    }
+    return initialSelectedProductIds.length ? "edit" : null;
+  });
   const [showEditConfirmation, setShowEditConfirmation] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
 
@@ -84,6 +102,14 @@ export function AdminProductTable({ items, importedProductIds = [], onEditMany, 
     () => selectedProductIds.map((productId) => itemsById.get(productId)).filter((item): item is CatalogItem => Boolean(item)),
     [itemsById, selectedProductIds]
   );
+
+  useEffect(() => {
+    if (!items.length) {
+      return;
+    }
+
+    setSelectedProductIds((current) => current.filter((productId) => itemsById.has(productId)));
+  }, [items.length, itemsById]);
 
   const availableStores = useMemo(() => {
     const storeSet = new Set<StoreId>();

@@ -158,6 +158,8 @@ export function AdminProductsManageView({ initialCatalog, initialQueueIds = [] }
 
       <AdminProductTable
         items={items}
+        initialSelectedProductIds={existingQueueIds}
+        initialSelectionAction={existingQueueIds.length ? "edit" : null}
         onEditMany={handleEditManyCatalogItems}
         onDeleteMany={handleDeleteManyCatalogItems}
       />
