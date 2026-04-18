@@ -28,7 +28,14 @@ export async function GET(request: NextRequest, context: RouteContext) {
   }
 
   const token = request.cookies.get(getAccessTokenCookieName())?.value;
-  const response = await fetch(`${getBackendApiBaseUrl()}/redirect/${encodeURIComponent(offerId)}`, {
+  const backendRedirectUrl = new URL(`${getBackendApiBaseUrl()}/redirect/${encodeURIComponent(offerId)}`);
+  request.nextUrl.searchParams.forEach((value, key) => {
+    if (value) {
+      backendRedirectUrl.searchParams.set(key, value);
+    }
+  });
+
+  const response = await fetch(backendRedirectUrl.toString(), {
     method: "GET",
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     cache: "no-store",

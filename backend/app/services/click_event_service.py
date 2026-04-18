@@ -31,12 +31,27 @@ class ClickEventService:
         return db.scalar(stmt)
 
     @staticmethod
+    def normalize_optional_text(value: str | None, *, max_length: int) -> str | None:
+        if not value:
+            return None
+
+        normalized = value.strip()
+        if not normalized:
+            return None
+
+        return normalized[:max_length]
+
+    @staticmethod
     def register_click(
         db: Session,
         *,
         offer: Offer,
         user: User | None,
         source: str,
+        position: int | None,
+        category: str | None,
+        search_term: str | None,
+        section_type: str | None,
         referrer: str | None,
         user_agent: str | None,
     ) -> ClickEvent:
@@ -46,6 +61,10 @@ class ClickEventService:
             offer_id=offer.id,
             store_id=offer.store_id,
             source=source,
+            position=position,
+            category=ClickEventService.normalize_optional_text(category, max_length=120),
+            search_term=ClickEventService.normalize_optional_text(search_term, max_length=255),
+            section_type=ClickEventService.normalize_optional_text(section_type, max_length=120),
             referrer=referrer,
             user_agent=user_agent,
         )

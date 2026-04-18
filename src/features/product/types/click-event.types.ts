@@ -6,7 +6,11 @@ export type ClickEvent = {
   productId: string;
   offerId: string;
   storeId: StoreId;
-  source: "catalog" | "comparison" | "favorites" | "cart";
-  placement: string;
+  source: string;
+  position?: number;
+  category?: string;
+  searchTerm?: string;
+  sectionType?: string;
+  placement?: string;
   createdAt: string;
 };

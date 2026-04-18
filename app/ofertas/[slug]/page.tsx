@@ -135,7 +135,15 @@ export default async function ProductOfferPage({ params }: ProductOfferPageProps
           }
         />
 
-        <OfferList offers={offersResponse.data} bestOfferId={bestOffer?.id} />
+        <OfferList
+          offers={offersResponse.data}
+          bestOfferId={bestOffer?.id}
+          context={{
+            source: "produto_detalhe",
+            category: item.product.category,
+            sectionType: "lista_ofertas_produto"
+          }}
+        />
       </section>
     </>
   );

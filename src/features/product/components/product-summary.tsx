@@ -197,7 +197,12 @@ export function ProductSummary({ item }: ProductSummaryProps) {
             </div>
 
             <a
-              href={getOfferRedirectHref(bestOffer)}
+              href={getOfferRedirectHref(bestOffer, {
+                source: "produto_detalhe",
+                position: 1,
+                category: item.product.category,
+                sectionType: "oferta_recomendada"
+              })}
               target="_blank"
               rel="noreferrer noopener sponsored"
               className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-coral px-5 py-4 text-base font-semibold text-white transition hover:bg-orange-600"

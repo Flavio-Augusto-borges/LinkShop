@@ -49,6 +49,10 @@ class ClickEventAdminRead(BaseModel):
     store_id: str
     store_name: str
     source: str
+    position: int | None
+    category: str | None
+    search_term: str | None
+    section_type: str | None
     referrer: str | None
     created_at: datetime
 

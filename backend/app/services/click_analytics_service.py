@@ -135,6 +135,10 @@ class ClickAnalyticsService:
                     "store_id": event.store_id,
                     "store_name": event.store.name,
                     "source": event.source,
+                    "position": event.position,
+                    "category": event.category,
+                    "search_term": event.search_term,
+                    "section_type": event.section_type,
                     "referrer": event.referrer,
                     "created_at": event.created_at,
                 }

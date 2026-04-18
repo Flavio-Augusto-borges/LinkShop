@@ -115,7 +115,7 @@ export function CartPageView() {
             </button>
           </div>
 
-          {entries.map(({ cartItem, catalogItem }) => {
+          {entries.map(({ cartItem, catalogItem }, index) => {
             const currentOffer = catalogItem?.bestOffer;
             const currentUnitPrice = catalogItem?.lowestPrice ?? cartItem.unitPrice;
             const lineTotal = currentUnitPrice * cartItem.quantity;
@@ -189,7 +189,12 @@ export function CartPageView() {
 
                       {currentOffer ? (
                         <a
-                          href={getOfferRedirectHref(currentOffer)}
+                          href={getOfferRedirectHref(currentOffer, {
+                            source: "carrinho_comparativo",
+                            position: index + 1,
+                            category: catalogItem?.product.category,
+                            sectionType: "lista_carrinho"
+                          })}
                           target="_blank"
                           rel="noreferrer noopener sponsored"
                           className="inline-flex items-center justify-center rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white transition hover:bg-neutral-800"

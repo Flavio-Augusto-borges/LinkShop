@@ -21,6 +21,10 @@ def redirect_to_offer(
     offer_id: str,
     request: Request,
     source: str | None = Query(default=None),
+    position: int | None = Query(default=None, ge=1),
+    category: str | None = Query(default=None),
+    search_term: str | None = Query(default=None),
+    section_type: str | None = Query(default=None),
     db: Session = Depends(get_db),
     user: User | None = Depends(get_optional_current_user),
 ) -> RedirectResponse:
@@ -52,6 +56,10 @@ def redirect_to_offer(
         offer=offer,
         user=user,
         source=resolved_source,
+        position=position,
+        category=category,
+        search_term=search_term,
+        section_type=section_type,
         referrer=request.headers.get("referer"),
         user_agent=request.headers.get("user-agent"),
     )
@@ -60,12 +68,16 @@ def redirect_to_offer(
     observability_registry.record_flow_metric("redirect.tracking", "clicks_registered", 1)
     affiliate_host = urlparse(offer.affiliate_url).netloc or "unknown"
     logger.info(
-        "event=redirect.success offer_id=%s product_id=%s store_id=%s user_id=%s source=%s affiliate_host=%s",
+        "event=redirect.success offer_id=%s product_id=%s store_id=%s user_id=%s source=%s position=%s category=%s search_term=%s section_type=%s affiliate_host=%s",
         offer.id,
         offer.product_id,
         offer.store_id,
         user.id if user else "anonymous",
         resolved_source,
+        position,
+        category,
+        search_term,
+        section_type,
         affiliate_host,
     )
     return RedirectResponse(url=offer.affiliate_url, status_code=status.HTTP_307_TEMPORARY_REDIRECT)

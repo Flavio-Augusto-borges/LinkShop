@@ -7,6 +7,12 @@ import { getAvailabilityLabel, getStoreDisplayName } from "@/shared/lib/store";
 type OfferListProps = {
   offers: Offer[];
   bestOfferId?: string;
+  context?: {
+    source?: string;
+    category?: string;
+    searchTerm?: string;
+    sectionType?: string;
+  };
 };
 
 function normalizeQualityScore(score: number | undefined) {
@@ -37,7 +43,7 @@ function formatUpdatedAt(value: string | undefined) {
   }).format(parsed);
 }
 
-export function OfferList({ offers, bestOfferId }: OfferListProps) {
+export function OfferList({ offers, bestOfferId, context }: OfferListProps) {
   if (!offers.length) {
     return (
       <div className="rounded-[1.5rem] border border-dashed border-black/10 bg-white p-6 text-sm text-neutral-600">
@@ -138,7 +144,13 @@ export function OfferList({ offers, bestOfferId }: OfferListProps) {
                 </div>
 
                 <a
-                  href={getOfferRedirectHref(offer)}
+                  href={getOfferRedirectHref(offer, {
+                    source: context?.source ?? "produto_detalhe",
+                    position: index + 1,
+                    category: context?.category,
+                    searchTerm: context?.searchTerm,
+                    sectionType: context?.sectionType ?? "lista_ofertas"
+                  })}
                   target="_blank"
                   rel="noreferrer noopener sponsored"
                   className={`inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition ${
