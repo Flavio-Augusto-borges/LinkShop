@@ -19,6 +19,7 @@ type LayoutMetrics = {
   viewportWidth: number | null;
   containerWidth: number;
   containerRight: number;
+  headerBottom: number;
 };
 
 function joinClasses(...values: Array<string | undefined>) {
@@ -41,7 +42,8 @@ export function FixedRightSidebarLayout({
   const [layoutMetrics, setLayoutMetrics] = useState<LayoutMetrics>({
     viewportWidth: null,
     containerWidth: 0,
-    containerRight: 0
+    containerRight: 0,
+    headerBottom: desktopTopOffset
   });
   const [isCollapsedPanelOpen, setIsCollapsedPanelOpen] = useState(false);
 
@@ -53,11 +55,30 @@ export function FixedRightSidebarLayout({
     function syncLayoutMetrics() {
       const nextViewportWidth = window.innerWidth;
       const rect = layoutRef.current?.getBoundingClientRect();
+      const headerBottom = Array.from(document.querySelectorAll<HTMLElement>("[data-site-header-boundary]")).reduce(
+        (maxBottom, element) => {
+          const elementRect = element.getBoundingClientRect();
+          const computedStyle = window.getComputedStyle(element);
+          const isVisible =
+            computedStyle.display !== "none" &&
+            computedStyle.visibility !== "hidden" &&
+            Number.parseFloat(computedStyle.opacity || "1") > 0.05 &&
+            elementRect.bottom > 0;
+
+          if (!isVisible) {
+            return maxBottom;
+          }
+
+          return Math.max(maxBottom, elementRect.bottom);
+        },
+        desktopTopOffset
+      );
 
       setLayoutMetrics({
         viewportWidth: nextViewportWidth,
         containerWidth: rect?.width ?? 0,
-        containerRight: rect?.right ?? nextViewportWidth
+        containerRight: rect?.right ?? nextViewportWidth,
+        headerBottom
       });
     }
 
@@ -73,12 +94,14 @@ export function FixedRightSidebarLayout({
     }
 
     window.addEventListener("resize", syncLayoutMetrics, { passive: true });
+    window.addEventListener("scroll", syncLayoutMetrics, { passive: true });
 
     return () => {
       window.removeEventListener("resize", syncLayoutMetrics);
+      window.removeEventListener("scroll", syncLayoutMetrics);
       observer?.disconnect();
     };
-  }, []);
+  }, [desktopTopOffset]);
 
   const viewportWidth = layoutMetrics.viewportWidth ?? 0;
   const isDesktop = viewportWidth >= desktopBreakpoint;
@@ -86,6 +109,7 @@ export function FixedRightSidebarLayout({
   const hasEnoughMainWidth = layoutMetrics.containerWidth >= desktopMinMainWidth;
   const hasDockingLane = sidebarLeft >= layoutMetrics.containerRight + desktopGap;
   const canDockSidebar = isDesktop && hasEnoughMainWidth && hasDockingLane;
+  const effectiveTopOffset = Math.ceil(layoutMetrics.headerBottom + 12);
 
   useEffect(() => {
     if (!isDesktop || canDockSidebar) {
@@ -104,21 +128,21 @@ export function FixedRightSidebarLayout({
   const dockedPanelStyle = useMemo(
     () =>
       ({
-        top: `${desktopTopOffset}px`,
+        top: `${effectiveTopOffset}px`,
         width: `${desktopSidebarWidth}px`,
-        maxHeight: `calc(100vh - ${desktopTopOffset + 16}px)`
+        maxHeight: `calc(100vh - ${effectiveTopOffset + 16}px)`
       }) as CSSProperties,
-    [desktopSidebarWidth, desktopTopOffset]
+    [desktopSidebarWidth, effectiveTopOffset]
   );
 
   const collapsedDrawerStyle = useMemo(
     () =>
       ({
-        top: `${desktopTopOffset}px`,
+        top: `${effectiveTopOffset}px`,
         width: `${desktopSidebarWidth + collapsedHandleWidth}px`,
-        maxHeight: `calc(100vh - ${desktopTopOffset + 16}px)`
+        maxHeight: `calc(100vh - ${effectiveTopOffset + 16}px)`
       }) as CSSProperties,
-    [collapsedHandleWidth, desktopSidebarWidth, desktopTopOffset]
+    [collapsedHandleWidth, desktopSidebarWidth, effectiveTopOffset]
   );
 
   const collapsedDrawerMotionStyle = useMemo(

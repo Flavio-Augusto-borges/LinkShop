@@ -265,7 +265,7 @@ export function SiteHeader() {
 
   return (
     <>
-      <header className="glass-panel w-full rounded-none border-x-0 px-3 py-3 md:px-6 md:py-4">
+      <header data-site-header-boundary className="glass-panel w-full rounded-none border-x-0 px-3 py-3 md:px-6 md:py-4">
         <HeaderContent
           mode="top"
           pathname={pathname}
@@ -282,6 +282,7 @@ export function SiteHeader() {
 
       <div className="pointer-events-none fixed left-0 top-2 z-40 w-screen px-3 md:px-4">
         <div
+          data-site-header-boundary
           className={`glass-panel pointer-events-auto w-full rounded-none border-x-0 px-3 py-3 transition-[transform,opacity] duration-[280ms] ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform md:px-6 md:py-4 ${
             isFloatingVisible ? "translate-y-0 opacity-100" : "-translate-y-[108%] opacity-0"
           }`}
