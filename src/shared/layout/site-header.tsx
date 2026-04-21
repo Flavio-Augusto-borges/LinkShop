@@ -94,11 +94,11 @@ function HeaderNav({
     return `rounded-full px-3 py-1.5 text-sm transition ${
       isTopHeader
         ? isActive
-          ? "bg-white/18 text-white"
-          : "text-white/82 hover:bg-white/12"
+          ? "border border-black/10 bg-black/14 text-white shadow-[0_12px_26px_rgba(116,41,8,0.18)]"
+          : "border border-transparent text-white/82 hover:border-black/10 hover:bg-black/14 hover:text-white hover:shadow-[0_12px_26px_rgba(116,41,8,0.18)]"
         : isActive
-          ? "bg-white/18 text-white"
-          : "text-white/82 hover:bg-white/12"
+          ? "border border-black/10 bg-black/14 text-white shadow-[0_12px_26px_rgba(116,41,8,0.18)]"
+          : "border border-transparent text-white/82 hover:border-black/10 hover:bg-black/14 hover:text-white hover:shadow-[0_12px_26px_rgba(116,41,8,0.18)]"
     }`;
   }
 
