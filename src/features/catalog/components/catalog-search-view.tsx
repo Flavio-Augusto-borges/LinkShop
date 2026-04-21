@@ -4,6 +4,7 @@ import { CatalogFilters } from "@/features/catalog/components/catalog-filters";
 import { CatalogGrid } from "@/features/catalog/components/catalog-grid";
 import { CatalogPagination } from "@/features/catalog/components/catalog-pagination";
 import { formatPrice, isFinitePositiveNumber } from "@/shared/lib/format";
+import { FixedRightSidebarLayout } from "@/shared/layout";
 import { SectionHeading } from "@/shared/ui/section-heading";
 import Link from "next/link";
 
@@ -144,44 +145,48 @@ export function CatalogSearchView({ result, context, buildPageHref }: CatalogSea
         </div>
       </section>
 
-      <section className="mt-6">
-        <div className="section-shell xl:mr-[360px] 2xl:mr-[390px]">
-          {activeFilters.length ? (
-            <div className="mb-5 flex flex-wrap gap-2">
-              {activeFilters.map((filter) => (
-                <span key={filter} className="rounded-full bg-black/5 px-4 py-2 text-sm text-neutral-700">
-                  {filter}
-                </span>
-              ))}
-            </div>
-          ) : null}
+      <FixedRightSidebarLayout
+        desktopSidebarWidth={340}
+        desktopGap={48}
+        desktopTopOffset={144}
+        main={
+          <div className="section-shell">
+            {activeFilters.length ? (
+              <div className="mb-5 flex flex-wrap gap-2">
+                {activeFilters.map((filter) => (
+                  <span key={filter} className="rounded-full bg-black/5 px-4 py-2 text-sm text-neutral-700">
+                    {filter}
+                  </span>
+                ))}
+              </div>
+            ) : null}
 
-          <CatalogGrid
-            items={result.items}
-            variant="compact"
-            emptyState={
-              <CatalogEmptyState
-                query={result.appliedFilters.query}
-                hasFilters={hasActiveFilters(result)}
-              />
-            }
-          />
+            <CatalogGrid
+              items={result.items}
+              variant="compact"
+              emptyState={
+                <CatalogEmptyState
+                  query={result.appliedFilters.query}
+                  hasFilters={hasActiveFilters(result)}
+                />
+              }
+            />
 
-          <CatalogPagination
-            currentPage={result.page}
-            totalPages={totalPages}
-            buildPageHref={buildPageHref}
-          />
-        </div>
-
-        <aside className="mt-6 xl:fixed xl:right-4 xl:top-32 xl:z-30 xl:mt-0 xl:w-[320px] xl:max-h-[calc(100vh-9rem)] xl:overflow-y-auto 2xl:right-6 2xl:w-[340px]">
+            <CatalogPagination
+              currentPage={result.page}
+              totalPages={totalPages}
+              buildPageHref={buildPageHref}
+            />
+          </div>
+        }
+        sidebar={
           <CatalogFilters
             filters={result.appliedFilters}
             categories={result.availableCategories}
             stores={result.availableStores}
           />
-        </aside>
-      </section>
+        }
+      />
     </>
   );
 }
