@@ -20,10 +20,142 @@ type HeaderContentProps = {
   onSignOut: () => void;
 };
 
+type HeaderMenuProps = {
+  mode: "top" | "floating";
+  isAdmin: boolean;
+  isAuthenticated: boolean;
+  onSignOut: () => void;
+};
+
 const TOP_ZONE = 72;
 const NOISE_THRESHOLD = 1.5;
 const SHOW_ON_UP_THRESHOLD = 8;
 const HIDE_ON_DOWN_THRESHOLD = 10;
+
+function HeaderMenu({ mode, isAdmin, isAuthenticated, onSignOut }: HeaderMenuProps) {
+  const isTopHeader = mode === "top";
+  const summaryClassName = isTopHeader
+    ? "inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/18 bg-white/10 text-white transition hover:bg-white/16"
+    : "inline-flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-black/5 text-ink transition hover:bg-black/10";
+  const menuClassName = isTopHeader
+    ? "absolute right-0 top-[calc(100%+0.75rem)] z-50 grid min-w-[13rem] gap-1 rounded-2xl border border-white/18 bg-[#fff7f2] p-2 text-sm text-ink shadow-glow"
+    : "absolute right-0 top-[calc(100%+0.75rem)] z-50 grid min-w-[13rem] gap-1 rounded-2xl border border-black/10 bg-white p-2 text-sm text-ink shadow-glow";
+  const itemClassName = "rounded-xl px-3 py-2 text-left transition hover:bg-black/5";
+
+  return (
+    <details className="relative">
+      <summary className={summaryClassName}>
+        <span className="sr-only">Abrir menu</span>
+        <span className="grid gap-[3px]">
+          <span className={`block h-[2px] w-4 rounded-full ${isTopHeader ? "bg-white" : "bg-ink"}`} />
+          <span className={`block h-[2px] w-4 rounded-full ${isTopHeader ? "bg-white" : "bg-ink"}`} />
+          <span className={`block h-[2px] w-4 rounded-full ${isTopHeader ? "bg-white" : "bg-ink"}`} />
+        </span>
+      </summary>
+
+      <div className={menuClassName}>
+        {isAuthenticated ? (
+          <>
+            <Link href="/conta" className={itemClassName}>
+              Conta
+            </Link>
+            {isAdmin ? (
+              <Link href="/admin" className={itemClassName}>
+                Admin
+              </Link>
+            ) : null}
+            <button type="button" onClick={onSignOut} className={itemClassName}>
+              Sair
+            </button>
+          </>
+        ) : (
+          <Link href="/auth" className={itemClassName}>
+            Entrar / Cadastrar
+          </Link>
+        )}
+      </div>
+    </details>
+  );
+}
+
+function HeaderNav({
+  mode,
+  pathname,
+  favoritesCount,
+  cartItemsCount
+}: Pick<HeaderContentProps, "mode" | "pathname" | "favoritesCount" | "cartItemsCount">) {
+  const isTopHeader = mode === "top";
+
+  function navItemClass(href: string) {
+    const matchesProductsAlias =
+      href === "/buscar" && (pathname === "/produtos" || pathname.startsWith("/produtos/"));
+    const isActive = pathname === href || (href !== "/" && pathname.startsWith(`${href}/`)) || matchesProductsAlias;
+
+    return `rounded-full px-3 py-1.5 text-sm transition ${
+      isTopHeader
+        ? isActive
+          ? "bg-white/18 text-white"
+          : "text-white/82 hover:bg-white/12"
+        : isActive
+          ? "bg-black/10 text-ink"
+          : "text-neutral-600 hover:bg-black/5"
+    }`;
+  }
+
+  return (
+    <nav
+      className={`flex flex-wrap items-center justify-center text-sm ${
+        isTopHeader ? "gap-1.5 text-white/82" : "gap-1 text-neutral-600"
+      }`}
+    >
+      <Link href="/" className={navItemClass("/")}>
+        Inicio
+      </Link>
+      <Link href="/buscar" className={navItemClass("/buscar")}>
+        Produtos
+      </Link>
+      <Link href="/favoritos" className={navItemClass("/favoritos")}>
+        Favoritos ({favoritesCount})
+      </Link>
+      <Link href="/lista" className={navItemClass("/lista")}>
+        Carrinho ({cartItemsCount})
+      </Link>
+    </nav>
+  );
+}
+
+function SearchForm({
+  mode,
+  searchQuery,
+  onSearchQueryChange,
+  onSearchSubmit
+}: Pick<HeaderContentProps, "mode" | "searchQuery" | "onSearchQueryChange" | "onSearchSubmit">) {
+  const isTopHeader = mode === "top";
+
+  return (
+    <form onSubmit={onSearchSubmit} className="flex min-w-0 gap-2">
+      <input
+        type="search"
+        value={searchQuery}
+        onChange={(event) => onSearchQueryChange(event.target.value)}
+        placeholder="Buscar produto, marca ou categoria"
+        className={`min-w-0 flex-1 rounded-full px-4 py-2 text-sm outline-none transition ${
+          isTopHeader
+            ? "border border-white/24 bg-white text-ink placeholder:text-neutral-400 focus:border-white/50"
+            : "border border-black/10 bg-white focus:border-coral/40"
+        }`}
+      />
+      <button
+        type="submit"
+        className={`inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition ${
+          isTopHeader ? "bg-ink text-white hover:bg-neutral-900" : "bg-coral text-white hover:bg-orange-600"
+        }`}
+      >
+        Buscar
+      </button>
+    </form>
+  );
+}
 
 function HeaderContent({
   mode,
@@ -37,93 +169,63 @@ function HeaderContent({
   cartItemsCount,
   onSignOut
 }: HeaderContentProps) {
-  function navItemClass(href: string) {
-    const matchesProductsAlias =
-      href === "/buscar" && (pathname === "/produtos" || pathname.startsWith("/produtos/"));
-    const isActive = pathname === href || (href !== "/" && pathname.startsWith(`${href}/`)) || matchesProductsAlias;
+  const isTopHeader = mode === "top";
 
-    return `rounded-full px-3 py-1.5 text-sm transition ${
-      isActive ? "bg-black/10 text-ink" : "text-neutral-600 hover:bg-black/5"
-    }`;
+  if (!isTopHeader) {
+    return (
+      <div className="grid gap-3 md:grid-cols-[minmax(0,1.2fr)_auto_auto] md:items-center">
+        <SearchForm
+          mode={mode}
+          searchQuery={searchQuery}
+          onSearchQueryChange={onSearchQueryChange}
+          onSearchSubmit={onSearchSubmit}
+        />
+
+        <div className="justify-self-center">
+          <HeaderNav
+            mode={mode}
+            pathname={pathname}
+            favoritesCount={favoritesCount}
+            cartItemsCount={cartItemsCount}
+          />
+        </div>
+
+        <div className="justify-self-end">
+          <HeaderMenu mode={mode} isAdmin={isAdmin} isAuthenticated={isAuthenticated} onSignOut={onSignOut} />
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="grid gap-3">
       <div className="flex items-center justify-between gap-3">
         <Link href="/" className="flex items-center gap-2.5">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-coral to-orange-400 font-display text-xs font-bold tracking-[0.16em] text-white md:h-10 md:w-10">
+          <span className="grid h-9 w-9 place-items-center rounded-xl border border-white/25 bg-white/12 font-display text-xs font-bold tracking-[0.16em] text-white md:h-10 md:w-10">
             LS
           </span>
           <div>
-            <strong className="block font-display text-sm md:text-base">LinkShop</strong>
-            <span className="hidden text-xs text-neutral-500 md:block">Comparador de precos e ofertas</span>
+            <strong className="block font-display text-sm text-white md:text-base">LinkShop</strong>
+            <span className="hidden text-xs text-white/74 md:block">Comparador de precos e ofertas</span>
           </div>
         </Link>
 
-        <div className="flex items-center gap-2">
-          {isAdmin ? (
-            <Link
-              href="/admin"
-              className="rounded-full bg-black/5 px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-black/10"
-            >
-              Admin
-            </Link>
-          ) : null}
-
-          {isAuthenticated ? (
-            <>
-              <Link href="/conta" className="rounded-full bg-black/5 px-3 py-1.5 text-xs font-semibold text-ink hover:bg-black/10">
-                Conta
-              </Link>
-              <button
-                type="button"
-                onClick={onSignOut}
-                className="rounded-full bg-black/5 px-3 py-1.5 text-xs font-semibold text-ink hover:bg-black/10"
-              >
-                Sair
-              </button>
-            </>
-          ) : (
-            <Link
-              href="/auth"
-              className="rounded-full bg-coral px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-600"
-            >
-              Entrar / Cadastrar
-            </Link>
-          )}
-        </div>
+        <HeaderMenu mode={mode} isAdmin={isAdmin} isAuthenticated={isAuthenticated} onSignOut={onSignOut} />
       </div>
 
-      <form onSubmit={onSearchSubmit} className="flex gap-2">
-        <input
-          type="search"
-          value={searchQuery}
-          onChange={(event) => onSearchQueryChange(event.target.value)}
-          placeholder="Buscar produto, marca ou categoria"
-          className="min-w-0 flex-1 rounded-full border border-black/10 bg-white px-4 py-2 text-sm outline-none transition focus:border-coral/40"
-        />
-        <button
-          type="submit"
-          className="inline-flex items-center justify-center rounded-full bg-coral px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600"
-        >
-          Buscar
-        </button>
-      </form>
+      <SearchForm
+        mode={mode}
+        searchQuery={searchQuery}
+        onSearchQueryChange={onSearchQueryChange}
+        onSearchSubmit={onSearchSubmit}
+      />
 
-      <nav className={`flex flex-wrap items-center text-sm text-neutral-600 ${mode === "floating" ? "gap-1" : "gap-1.5"}`}>
-        <Link href="/" className={navItemClass("/")}>
-          Inicio
-        </Link>
-        <Link href="/buscar" className={navItemClass("/buscar")}>
-          Produtos
-        </Link>
-        <Link href="/favoritos" className={navItemClass("/favoritos")}>
-          Favoritos ({favoritesCount})
-        </Link>
-        <Link href="/lista" className={navItemClass("/lista")}>
-          Carrinho ({cartItemsCount})
-        </Link>
-      </nav>
+      <HeaderNav
+        mode={mode}
+        pathname={pathname}
+        favoritesCount={favoritesCount}
+        cartItemsCount={cartItemsCount}
+      />
     </div>
   );
 }
@@ -265,7 +367,10 @@ export function SiteHeader() {
 
   return (
     <>
-      <header data-site-header-boundary className="glass-panel w-full rounded-none border-x-0 px-3 py-3 md:px-6 md:py-4">
+      <header
+        data-site-header-boundary
+        className="w-full border-b border-black/10 bg-gradient-to-r from-coral via-orange-500 to-orange-400 px-3 py-3 text-white md:px-6 md:py-4"
+      >
         <HeaderContent
           mode="top"
           pathname={pathname}
