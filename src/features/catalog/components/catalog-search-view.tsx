@@ -149,6 +149,8 @@ export function CatalogSearchView({ result, context, buildPageHref }: CatalogSea
         desktopSidebarWidth={340}
         desktopGap={48}
         desktopTopOffset={144}
+        desktopMinMainWidth={760}
+        collapsedToggleLabel="Filtrar"
         main={
           <div className="section-shell">
             {activeFilters.length ? (

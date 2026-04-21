@@ -179,7 +179,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const response = await catalogService.searchCatalog({
     ...filters,
     page,
-    pageSize: 12
+    pageSize: 25
   });
 
   if (!response.ok) {

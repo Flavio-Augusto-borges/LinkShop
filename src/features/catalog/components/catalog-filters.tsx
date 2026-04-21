@@ -94,7 +94,7 @@ export function CatalogFilters({ filters, categories, stores }: CatalogFiltersPr
   return (
     <aside className="glass-panel h-fit p-5">
       <div className="mb-5 flex items-center justify-between">
-        <h3 className="font-display text-2xl">Refinar produtos</h3>
+        <h3 className="font-display text-2xl">Filtrar</h3>
         <button type="button" onClick={resetFilters} className="text-sm font-medium text-coral">
           Limpar
         </button>
