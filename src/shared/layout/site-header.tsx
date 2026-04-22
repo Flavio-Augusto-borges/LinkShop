@@ -202,7 +202,7 @@ function HeaderContent({
 
   return (
     <div className="grid gap-3">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center gap-3">
         <Link href="/" className="flex items-center gap-2.5">
           <span className="grid h-9 w-9 place-items-center rounded-xl border border-white/25 bg-white/12 font-display text-xs font-bold tracking-[0.16em] text-white md:h-10 md:w-10">
             LS
@@ -213,15 +213,19 @@ function HeaderContent({
           </div>
         </Link>
 
-        <HeaderMenu mode={mode} isAdmin={isAdmin} isAuthenticated={isAuthenticated} onSignOut={onSignOut} />
-      </div>
+        <div className="min-w-0 flex-1">
+          <SearchForm
+            mode={mode}
+            searchQuery={searchQuery}
+            onSearchQueryChange={onSearchQueryChange}
+            onSearchSubmit={onSearchSubmit}
+          />
+        </div>
 
-      <SearchForm
-        mode={mode}
-        searchQuery={searchQuery}
-        onSearchQueryChange={onSearchQueryChange}
-        onSearchSubmit={onSearchSubmit}
-      />
+        <div className="ml-auto shrink-0">
+          <HeaderMenu mode={mode} isAdmin={isAdmin} isAuthenticated={isAuthenticated} onSignOut={onSignOut} />
+        </div>
+      </div>
 
       <HeaderNav
         mode={mode}
