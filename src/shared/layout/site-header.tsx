@@ -34,47 +34,92 @@ const HIDE_ON_DOWN_THRESHOLD = 10;
 
 function HeaderMenu({ mode, isAdmin, isAuthenticated, onSignOut }: HeaderMenuProps) {
   const isTopHeader = mode === "top";
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
   const summaryClassName = isTopHeader
     ? "inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/18 bg-white/10 text-white transition hover:bg-white/16"
     : "inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/18 bg-white/10 text-white transition hover:bg-white/16";
   const menuClassName = isTopHeader
-    ? "absolute right-0 top-[calc(100%+0.75rem)] z-50 grid min-w-[13rem] gap-1 rounded-2xl border border-white/18 bg-[#fff7f2] p-2 text-sm text-ink shadow-glow"
-    : "absolute right-0 top-[calc(100%+0.75rem)] z-50 grid min-w-[13rem] gap-1 rounded-2xl border border-white/18 bg-[#fff7f2] p-2 text-sm text-ink shadow-glow";
+    ? "absolute right-0 top-[calc(100%+0.75rem)] z-50 grid min-w-[13rem] gap-1 rounded-2xl border border-white/18 bg-[#fff7f2] p-2 text-sm text-ink shadow-glow origin-top-right transition-[opacity,transform] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]"
+    : "absolute right-0 top-[calc(100%+0.75rem)] z-50 grid min-w-[13rem] gap-1 rounded-2xl border border-white/18 bg-[#fff7f2] p-2 text-sm text-ink shadow-glow origin-top-right transition-[opacity,transform] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]";
   const itemClassName = "rounded-xl px-3 py-2 text-left transition hover:bg-black/5";
 
+  function cancelScheduledClose() {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+  }
+
+  function scheduleClose() {
+    cancelScheduledClose();
+    closeTimeoutRef.current = setTimeout(() => {
+      setIsOpen(false);
+      closeTimeoutRef.current = null;
+    }, 180);
+  }
+
+  useEffect(() => {
+    return () => {
+      cancelScheduledClose();
+    };
+  }, []);
+
   return (
-    <details className="relative">
-      <summary className={summaryClassName}>
+    <div className="relative" onMouseEnter={cancelScheduledClose} onMouseLeave={scheduleClose}>
+      <button
+        type="button"
+        aria-expanded={isOpen}
+        onClick={() => {
+          cancelScheduledClose();
+          setIsOpen((current) => !current);
+        }}
+        className={summaryClassName}
+      >
         <span className="sr-only">Abrir menu</span>
         <span className="grid gap-[3px]">
           <span className="block h-[2px] w-4 rounded-full bg-white" />
           <span className="block h-[2px] w-4 rounded-full bg-white" />
           <span className="block h-[2px] w-4 rounded-full bg-white" />
         </span>
-      </summary>
+      </button>
 
-      <div className={menuClassName}>
+      <div
+        aria-hidden={!isOpen}
+        className={`${menuClassName} ${
+          isOpen
+            ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
+            : "pointer-events-none -translate-y-1 scale-[0.98] opacity-0"
+        }`}
+      >
         {isAuthenticated ? (
           <>
-            <Link href="/conta" className={itemClassName}>
+            <Link href="/conta" className={itemClassName} onClick={() => setIsOpen(false)}>
               Conta
             </Link>
             {isAdmin ? (
-              <Link href="/admin" className={itemClassName}>
+              <Link href="/admin" className={itemClassName} onClick={() => setIsOpen(false)}>
                 Admin
               </Link>
             ) : null}
-            <button type="button" onClick={onSignOut} className={itemClassName}>
+            <button
+              type="button"
+              onClick={() => {
+                setIsOpen(false);
+                onSignOut();
+              }}
+              className={itemClassName}
+            >
               Sair
             </button>
           </>
         ) : (
-          <Link href="/auth" className={itemClassName}>
+          <Link href="/auth" className={itemClassName} onClick={() => setIsOpen(false)}>
             Entrar / Cadastrar
           </Link>
         )}
       </div>
-    </details>
+    </div>
   );
 }
 
