@@ -78,6 +78,10 @@ export function ProductSummary({ item }: ProductSummaryProps) {
   const bestQualityLabel = getQualityLabel(bestOffer?.qualityScore);
   const bestQualityScore = normalizeQualityScore(bestOffer?.qualityScore);
   const bestOfferUpdatedAt = formatUpdatedAt(bestOffer?.lastSyncedAt);
+  const alternativeOffers = item.offers
+    .filter((offer) => offer.id !== bestOffer?.id)
+    .sort((left, right) => left.price - right.price)
+    .slice(0, 3);
   const decisionSummary = bestDiffersFromLowest
     ? "Recomendada pelo equilibrio entre preco, disponibilidade e confianca da oferta."
     : "Recomendada por reunir o menor preco bruto com boa qualidade de entrega.";
@@ -86,16 +90,30 @@ export function ProductSummary({ item }: ProductSummaryProps) {
     <div className="grid gap-6">
       <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(340px,1fr)]">
         <article className="min-w-0 rounded-[2rem] bg-white p-6 shadow-glow md:p-8">
-          <div className="grid gap-6 lg:grid-cols-[minmax(320px,460px)_minmax(0,1fr)] lg:items-start">
+          <div className="flex flex-wrap gap-2 text-xs font-semibold">
+            <span className="max-w-full rounded-full bg-black/5 px-3 py-1 text-neutral-700">
+              {productCategory} {productBrand !== "Marca nao informada" ? productBrand : ""}
+            </span>
+            <span className="value-safe max-w-full rounded-full bg-coral/10 px-3 py-1 text-coral">
+              {item.offers.length} ofertas
+            </span>
+            {headlineDiscount > 0 ? (
+              <span className="value-safe max-w-full rounded-full bg-gold px-3 py-1 text-ink">{headlineDiscount}% de desconto</span>
+            ) : null}
+          </div>
+
+          <h2 className="mt-4 break-words font-display text-3xl leading-tight md:text-4xl xl:text-[3.2rem]">{productName}</h2>
+
+          <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(320px,430px)_minmax(0,1fr)] lg:items-stretch">
             <div className="min-w-0">
-              <div className="relative min-h-[360px] overflow-hidden rounded-[1.75rem] bg-gradient-to-b from-orange-50 to-neutral-100 md:min-h-[460px]">
+              <div className="relative h-full min-h-[320px] overflow-hidden rounded-[1.75rem] bg-gradient-to-b from-orange-50 via-orange-50 to-neutral-100 md:min-h-[420px]">
                 {safeImageUrl ? (
                   <Image
                     src={safeImageUrl}
                     alt={productName}
                     fill
-                    sizes="(max-width: 1024px) 100vw, (max-width: 1536px) 42vw, 460px"
-                    className="object-contain p-6 md:p-8"
+                    sizes="(max-width: 1024px) 100vw, (max-width: 1536px) 40vw, 430px"
+                    className="object-contain object-center p-4 md:p-6"
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center px-6 text-center text-sm text-neutral-500">
@@ -105,20 +123,54 @@ export function ProductSummary({ item }: ProductSummaryProps) {
               </div>
             </div>
 
-            <div className="min-w-0">
-              <div className="flex flex-wrap gap-2 text-xs font-semibold">
-                <span className="max-w-full rounded-full bg-black/5 px-3 py-1 text-neutral-700">{productCategory}</span>
-                <span className="max-w-full rounded-full bg-black/5 px-3 py-1 text-neutral-700">{productBrand}</span>
-                <span className="max-w-full rounded-full bg-coral/10 px-3 py-1 text-coral">{item.offers.length} ofertas</span>
-                {headlineDiscount > 0 ? (
-                  <span className="value-safe max-w-full rounded-full bg-gold px-3 py-1 text-ink">{headlineDiscount}% OFF</span>
-                ) : null}
-              </div>
+            <div className="flex min-w-0 flex-col justify-between">
+              <div>
+                <p className="max-w-3xl break-words text-base leading-8 text-neutral-600 md:line-clamp-5">{productDescription}</p>
 
-              <h2 className="mt-4 break-words font-display text-3xl leading-tight md:text-4xl xl:text-[3.2rem]">{productName}</h2>
-              <p className="mt-4 max-w-3xl break-words text-base leading-8 text-neutral-600 md:line-clamp-5">{productDescription}</p>
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  <div className="min-w-0 rounded-[1.25rem] bg-black/5 px-4 py-3">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-neutral-500">Loja recomendada</p>
+                    <p className="mt-2 break-words font-semibold text-ink">{bestOfferStore}</p>
+                    <p className="mt-1 break-words text-xs text-neutral-500">Vendido por {bestOfferSeller}</p>
+                  </div>
+                  <div className="min-w-0 rounded-[1.25rem] bg-black/5 px-4 py-3">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-neutral-500">Qualidade da oferta</p>
+                    <p className="mt-2 break-words font-semibold text-ink">
+                      {bestQualityLabel}
+                      {bestQualityScore !== null ? ` (${bestQualityScore}/100)` : ""}
+                    </p>
+                    <p className="mt-1 break-words text-xs text-neutral-500">Atualizada em {bestOfferUpdatedAt}</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
+
+          {alternativeOffers.length ? (
+            <div className="mt-6 rounded-[1.5rem] border border-black/5 bg-black/[0.03] p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-neutral-500">Outras ofertas</p>
+                  <p className="mt-1 text-sm text-neutral-500">Outras lojas que ja aparecem no comparador para este produto.</p>
+                </div>
+                <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-neutral-600 shadow-sm">
+                  {alternativeOffers.length} nesta previa
+                </span>
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {alternativeOffers.map((offer) => (
+                  <div key={offer.id} className="min-w-0 rounded-[1.15rem] bg-white px-4 py-3 shadow-sm">
+                    <p className="truncate text-sm font-semibold text-ink">{getStoreDisplayName(offer.storeId)}</p>
+                    <p className="mt-2 value-safe font-display text-xl leading-none text-ink">{formatPrice(offer.price)}</p>
+                    <p className="mt-1 line-clamp-1 text-xs text-neutral-500">
+                      {offer.installmentText ?? "Pagamento a vista"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </article>
 
         <aside className="min-w-0 rounded-[2rem] bg-gradient-to-br from-ink via-neutral-900 to-lagoon p-6 text-white shadow-glow">
