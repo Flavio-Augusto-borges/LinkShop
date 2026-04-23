@@ -29,6 +29,12 @@ Desktop.ini
 *.jks
 
 # =========================
+# Local diagnostics / private project notes
+# =========================
+docs/backend-diagnosis.md
+docs/frontend-navigation-diagnosis.md
+
+# =========================
 # Frontend (Next.js / Node)
 # =========================
 node_modules/

@@ -176,6 +176,14 @@ Regras atuais:
 - `production` exige `APP_DEBUG=false`
 - `production` exige `AUTH_SECRET_KEY` diferente do default
 - `production` exige `CORS_ORIGINS` configurado
+- `development` e `test` recusam `DATABASE_URL` remoto por padrao. Para usar Neon ou outro banco remoto em desenvolvimento, defina `ALLOW_REMOTE_DATABASE_IN_DEVELOPMENT=true` conscientemente.
+
+Separacao segura local/producao:
+
+- Use `backend/.env` local com `DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/linkshop`.
+- Use as variaveis do Render/Neon apenas no ambiente online, com `APP_ENV=production`.
+- O arquivo `backend/.env` e ignorado pelo Git, entao credenciais locais nao sobem em commit/push.
+- Se o backend local recusar iniciar com "Remote DATABASE_URL blocked", ele esta protegendo voce de escrever em um banco remoto a partir do ambiente local.
 
 ## Automacao basica de desenvolvimento
 

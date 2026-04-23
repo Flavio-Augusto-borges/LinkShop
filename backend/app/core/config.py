@@ -3,6 +3,7 @@ import logging
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlparse
 
 from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -29,6 +30,7 @@ class Settings(BaseSettings):
     mercado_livre_api_base_url: str = "https://api.mercadolibre.com"
     mercado_livre_site_id: str = "MLB"
     mercado_livre_timeout_seconds: int = 12
+    allow_remote_database_in_development: bool = False
 
     model_config = SettingsConfigDict(
         env_file=BACKEND_ENV_FILE,
@@ -136,6 +138,21 @@ def validate_critical_environment(current_settings: Settings) -> None:
     if not current_settings.auth_secret_key.get_secret_value().strip():
         invalid_values.append("AUTH_SECRET_KEY")
 
+    if (
+        current_settings.app_env != "production"
+        and _is_remote_database_url(current_settings.database_url)
+        and not current_settings.allow_remote_database_in_development
+    ):
+        logger.error(
+            "Refusing to start %s environment with a remote DATABASE_URL. "
+            "Use a local PostgreSQL URL or set ALLOW_REMOTE_DATABASE_IN_DEVELOPMENT=true intentionally.",
+            current_settings.app_env,
+        )
+        raise RuntimeError(
+            "Remote DATABASE_URL blocked in non-production environment. "
+            "Point backend/.env to localhost/db, or set ALLOW_REMOTE_DATABASE_IN_DEVELOPMENT=true for an explicit dev override."
+        )
+
     if missing_keys or invalid_values:
         for key in missing_keys:
             logger.error("Missing required environment variable: %s", key)
@@ -158,3 +175,14 @@ def validate_critical_environment(current_settings: Settings) -> None:
     logger.info(
         "Critical startup environment validated: DATABASE_URL, AUTH_SECRET_KEY (JWT/refresh equivalent), RUN_MIGRATIONS_ON_STARTUP"
     )
+
+
+def _is_remote_database_url(database_url: str) -> bool:
+    normalized_url = database_url.replace("postgresql+psycopg://", "postgresql://", 1)
+    parsed = urlparse(normalized_url)
+    hostname = (parsed.hostname or "").lower()
+
+    if not hostname:
+        return False
+
+    return hostname not in {"localhost", "127.0.0.1", "::1", "db"}
