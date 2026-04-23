@@ -14,9 +14,15 @@ type AdminMercadoLivrePreviewGridProps = {
   query: string;
 };
 
-const INITIAL_VISIBLE_COUNT = 20;
-const MAX_FETCH_RESULTS = 48;
-const LOAD_MORE_STEP = 12;
+const PREVIEW_PAGE_SIZE = 24;
+
+function buildPageWindow(currentPage: number, totalPages: number) {
+  const windowSize = 5;
+  const safeTotalPages = Math.max(totalPages, 1);
+  const startPage = Math.max(1, Math.min(currentPage - 2, safeTotalPages - windowSize + 1));
+  const endPage = Math.min(safeTotalPages, startPage + windowSize - 1);
+  return Array.from({ length: endPage - startPage + 1 }, (_, index) => startPage + index);
+}
 
 export function AdminMercadoLivrePreviewGrid({ query }: AdminMercadoLivrePreviewGridProps) {
   const session = useAuthStore((state) => state.session);
@@ -26,7 +32,7 @@ export function AdminMercadoLivrePreviewGrid({ query }: AdminMercadoLivrePreview
   const [result, setResult] = useState<AdminMercadoLivreCatalogPreviewSearchResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const normalizedQuery = query.trim();
 
@@ -35,7 +41,14 @@ export function AdminMercadoLivrePreviewGrid({ query }: AdminMercadoLivrePreview
       setResult(null);
       setError(null);
       setIsLoading(false);
-      setVisibleCount(INITIAL_VISIBLE_COUNT);
+      setCurrentPage(1);
+      return;
+    }
+    setCurrentPage(1);
+  }, [isAdmin, normalizedQuery]);
+
+  useEffect(() => {
+    if (!isAdmin || !normalizedQuery) {
       return;
     }
 
@@ -44,9 +57,7 @@ export function AdminMercadoLivrePreviewGrid({ query }: AdminMercadoLivrePreview
     async function load() {
       setIsLoading(true);
       setError(null);
-      setVisibleCount(INITIAL_VISIBLE_COUNT);
-
-      const response = await adminMercadoLivreService.searchProducts(normalizedQuery, MAX_FETCH_RESULTS);
+      const response = await adminMercadoLivreService.searchProducts(normalizedQuery, PREVIEW_PAGE_SIZE, currentPage);
 
       if (ignore) {
         return;
@@ -68,15 +79,12 @@ export function AdminMercadoLivrePreviewGrid({ query }: AdminMercadoLivrePreview
     return () => {
       ignore = true;
     };
-  }, [isAdmin, normalizedQuery]);
+  }, [currentPage, isAdmin, normalizedQuery]);
 
-  const visibleItems = useMemo(() => {
-    if (!result) {
-      return [];
-    }
-
-    return result.items.slice(0, visibleCount);
-  }, [result, visibleCount]);
+  const pageWindow = useMemo(
+    () => buildPageWindow(result?.page ?? currentPage, result?.totalPages ?? 1),
+    [currentPage, result?.page, result?.totalPages]
+  );
 
   if (!isAdmin || !normalizedQuery) {
     return null;
@@ -94,8 +102,10 @@ export function AdminMercadoLivrePreviewGrid({ query }: AdminMercadoLivrePreview
         </div>
 
         <div className="grid gap-1 rounded-[1.25rem] bg-black/[0.03] px-4 py-3 text-sm text-neutral-600">
-          <span>{result?.items.length ?? 0} produtos externos encontrados</span>
-          <span>Consultando ate {MAX_FETCH_RESULTS} itens por busca</span>
+          <span>{result?.total ?? 0} produtos externos encontrados</span>
+          <span>
+            Pagina {result?.page ?? currentPage} de {result?.totalPages ?? 1}
+          </span>
         </div>
       </div>
 
@@ -123,10 +133,10 @@ export function AdminMercadoLivrePreviewGrid({ query }: AdminMercadoLivrePreview
         </div>
       ) : null}
 
-      {!isLoading && !error && visibleItems.length ? (
+      {!isLoading && !error && result?.items.length ? (
         <>
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {visibleItems.map((item) => (
+            {result.items.map((item) => (
               <article
                 key={item.externalId}
                 className="flex h-full flex-col overflow-hidden rounded-[1.25rem] border border-black/6 bg-white shadow-sm"
@@ -187,15 +197,76 @@ export function AdminMercadoLivrePreviewGrid({ query }: AdminMercadoLivrePreview
             ))}
           </div>
 
-          {result && visibleCount < result.items.length ? (
-            <div className="mt-5 flex justify-center">
-              <button
-                type="button"
-                onClick={() => setVisibleCount((current) => Math.min(current + LOAD_MORE_STEP, result.items.length))}
-                className="inline-flex items-center rounded-full bg-coral px-5 py-3 text-sm font-semibold text-white transition hover:bg-coral/90"
-              >
-                Mostrar mais produtos
-              </button>
+          {result.totalPages > 1 ? (
+            <div className="mt-6 flex flex-col items-center gap-3">
+              <div className="text-sm text-neutral-500">
+                Exibindo {(result.page - 1) * result.pageSize + 1} a{" "}
+                {Math.min(result.total, result.page * result.pageSize)} de {result.total} produtos
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                  disabled={result.page <= 1}
+                  className="inline-flex h-10 min-w-10 items-center justify-center rounded-full border border-black/10 bg-white px-4 text-sm font-semibold text-ink transition hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Anterior
+                </button>
+
+                {pageWindow[0] > 1 ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage(1)}
+                      className="inline-flex h-10 min-w-10 items-center justify-center rounded-full border border-black/10 bg-white px-3 text-sm font-semibold text-ink transition hover:bg-black/5"
+                    >
+                      1
+                    </button>
+                    {pageWindow[0] > 2 ? <span className="px-1 text-sm text-neutral-400">...</span> : null}
+                  </>
+                ) : null}
+
+                {pageWindow.map((pageNumber) => (
+                  <button
+                    key={pageNumber}
+                    type="button"
+                    onClick={() => setCurrentPage(pageNumber)}
+                    aria-current={pageNumber === result.page ? "page" : undefined}
+                    className={`inline-flex h-10 min-w-10 items-center justify-center rounded-full px-3 text-sm font-semibold transition ${
+                      pageNumber === result.page
+                        ? "bg-coral text-white"
+                        : "border border-black/10 bg-white text-ink hover:bg-black/5"
+                    }`}
+                  >
+                    {pageNumber}
+                  </button>
+                ))}
+
+                {pageWindow[pageWindow.length - 1] < result.totalPages ? (
+                  <>
+                    {pageWindow[pageWindow.length - 1] < result.totalPages - 1 ? (
+                      <span className="px-1 text-sm text-neutral-400">...</span>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage(result.totalPages)}
+                      className="inline-flex h-10 min-w-10 items-center justify-center rounded-full border border-black/10 bg-white px-3 text-sm font-semibold text-ink transition hover:bg-black/5"
+                    >
+                      {result.totalPages}
+                    </button>
+                  </>
+                ) : null}
+
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((page) => Math.min(result.totalPages, page + 1))}
+                  disabled={result.page >= result.totalPages}
+                  className="inline-flex h-10 min-w-10 items-center justify-center rounded-full border border-black/10 bg-white px-4 text-sm font-semibold text-ink transition hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Proxima
+                </button>
+              </div>
             </div>
           ) : null}
         </>

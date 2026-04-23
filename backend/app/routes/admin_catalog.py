@@ -19,11 +19,12 @@ router = APIRouter()
 def search_mercado_livre_catalog(
     q: str = Query(min_length=1),
     limit: int = Query(default=10, ge=1, le=50),
+    page: int = Query(default=1, ge=1),
     current_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db),
 ) -> MercadoLivreCatalogSearchRead:
     _ = current_user
-    result = MercadoLivreCatalogSyncService.search_products(db, query=q, limit=limit)
+    result = MercadoLivreCatalogSyncService.search_products(db, query=q, limit=limit, page=page)
     return MercadoLivreCatalogSearchRead.model_validate(result.model_dump())
 
 

@@ -24,6 +24,10 @@ type BackendMercadoLivreSearchItem = {
 type BackendMercadoLivreSearchResult = {
   provider: string;
   query: string;
+  page: number;
+  page_size: number;
+  total: number;
+  total_pages: number;
   items: BackendMercadoLivreSearchItem[];
 };
 
@@ -204,10 +208,11 @@ export const adminMercadoLivreService = {
     return apiClient.delete<null>("/admin/integrations/mercado-livre/oauth/connection");
   },
 
-  async searchProducts(query: string, limit = 10): Promise<ApiResponse<AdminMercadoLivreSearchResult>> {
+  async searchProducts(query: string, limit = 10, page = 1): Promise<ApiResponse<AdminMercadoLivreSearchResult>> {
     const params = new URLSearchParams({
       q: query.trim(),
-      limit: String(limit)
+      limit: String(limit),
+      page: String(page)
     });
     const response = await apiClient.get<BackendMercadoLivreSearchResult>(
       `/admin/catalog/mercado-livre/search?${params.toString()}`
@@ -222,6 +227,10 @@ export const adminMercadoLivreService = {
       data: {
         provider: response.data.provider,
         query: response.data.query,
+        page: response.data.page,
+        pageSize: response.data.page_size,
+        total: response.data.total,
+        totalPages: response.data.total_pages,
         items: response.data.items.map(mapSearchItem)
       }
     };

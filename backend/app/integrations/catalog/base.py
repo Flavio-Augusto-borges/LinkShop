@@ -7,7 +7,14 @@ class BaseCatalogProvider(ABC):
     provider_name: str
 
     @abstractmethod
-    def search_products(self, *, query: str, limit: int = 10, access_token: str | None = None) -> CatalogSearchResult:
+    def search_products(
+        self,
+        *,
+        query: str,
+        limit: int = 10,
+        page: int = 1,
+        access_token: str | None = None,
+    ) -> CatalogSearchResult:
         raise NotImplementedError
 
     @abstractmethod

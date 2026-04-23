@@ -201,7 +201,7 @@ export function AdminMercadoLivreIntegrationView() {
     setFeedback({
       type: "success",
       title: "Busca concluida",
-      message: `${response.data.items.length} resultado(s) encontrados para "${response.data.query}".`
+      message: `${response.data.total} resultado(s) encontrados para "${response.data.query}". Pagina ${response.data.page} de ${response.data.totalPages}.`
     });
     setBusyKey(null);
   }
@@ -540,7 +540,7 @@ export function AdminMercadoLivreIntegrationView() {
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="font-display text-2xl">Resultados</h3>
                   <span className="rounded-full bg-black/5 px-3 py-1 text-xs font-semibold text-neutral-600">
-                    {searchResult.items.length} item(ns)
+                    {searchResult.total} item(ns) no total
                   </span>
                 </div>
 

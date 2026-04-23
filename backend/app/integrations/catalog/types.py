@@ -55,4 +55,8 @@ class CatalogSearchItem(BaseModel):
 class CatalogSearchResult(BaseModel):
     provider: str
     query: str
+    page: int = 1
+    page_size: int = 10
+    total: int = 0
+    total_pages: int = 1
     items: list[CatalogSearchItem] = Field(default_factory=list)

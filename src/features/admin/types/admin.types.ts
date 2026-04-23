@@ -59,6 +59,10 @@ export type AdminMercadoLivreSearchItem = {
 export type AdminMercadoLivreSearchResult = {
   provider: string;
   query: string;
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
   items: AdminMercadoLivreSearchItem[];
 };
 

@@ -1,4 +1,5 @@
 import json
+import math
 import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -31,8 +32,6 @@ class MercadoLivreSearchContext:
 class MercadoLivreCatalogProvider(BaseCatalogProvider):
     provider_name = "mercado-livre-catalog"
     marketplace = "mercado-livre"
-    _MIN_SEARCH_FETCH_LIMIT = 30
-    _MAX_SEARCH_FETCH_LIMIT = 50
     _ACCESSORY_TERMS = {
         "acessorio",
         "acessorios",
@@ -65,42 +64,77 @@ class MercadoLivreCatalogProvider(BaseCatalogProvider):
         "veiculos",
     }
 
-    def search_products(self, *, query: str, limit: int = 10, access_token: str | None = None) -> CatalogSearchResult:
+    def search_products(
+        self,
+        *,
+        query: str,
+        limit: int = 10,
+        page: int = 1,
+        access_token: str | None = None,
+    ) -> CatalogSearchResult:
         normalized_query = query.strip()
         if not normalized_query:
             raise BusinessRuleError("Query is required to search Mercado Livre catalog", code="CATALOG_QUERY_REQUIRED")
 
         requested_limit = max(1, min(limit, 50))
-        fetch_limit = self._build_search_fetch_limit(requested_limit)
+        requested_page = max(1, page)
+        requested_offset = (requested_page - 1) * requested_limit
         search_context = self._discover_search_context(normalized_query, access_token=access_token)
-        catalog_items: list[CatalogSearchItem] = []
         if access_token:
             catalog_payload = self._get_json(
-                f"/products/search?status=active&site_id={settings.mercado_livre_site_id}&q={quote(normalized_query)}&limit={fetch_limit}",
+                self._build_catalog_search_path(
+                    query=normalized_query,
+                    limit=requested_limit,
+                    offset=requested_offset,
+                    search_context=search_context,
+                ),
                 access_token=access_token,
             )
             catalog_items = self._parse_catalog_product_search_results(catalog_payload)
+            total = self._extract_total_from_paging(catalog_payload, fallback=len(catalog_items))
+            total_pages = max(1, math.ceil(total / requested_limit)) if total else 1
+            items = self._rank_search_results(
+                query=normalized_query,
+                items=catalog_items,
+                search_context=search_context,
+                limit=requested_limit,
+            )
+            return CatalogSearchResult(
+                provider=self.provider_name,
+                query=normalized_query,
+                page=requested_page,
+                page_size=requested_limit,
+                total=total,
+                total_pages=total_pages,
+                items=items,
+            )
 
-        marketplace_items: list[CatalogSearchItem] = []
         try:
             marketplace_payload = self._get_json(
-                f"/sites/{settings.mercado_livre_site_id}/search?q={quote(normalized_query)}&limit={fetch_limit}",
+                f"/sites/{settings.mercado_livre_site_id}/search?q={quote(normalized_query)}&limit={requested_limit}&offset={requested_offset}",
                 access_token=access_token,
             )
-        except ExternalServiceError as exc:
-            if not access_token or not self._is_forbidden_marketplace_search_error(exc):
-                raise
+        except ExternalServiceError:
+            raise
         else:
             marketplace_items = self._parse_marketplace_search_results(marketplace_payload)
-
-        items = self._rank_search_results(
-            query=normalized_query,
-            items=[*catalog_items, *marketplace_items],
-            search_context=search_context,
-            limit=requested_limit,
-        )
-
-        return CatalogSearchResult(provider=self.provider_name, query=normalized_query, items=items)
+            total = self._extract_total_from_paging(marketplace_payload, fallback=len(marketplace_items))
+            total_pages = max(1, math.ceil(total / requested_limit)) if total else 1
+            items = self._rank_search_results(
+                query=normalized_query,
+                items=marketplace_items,
+                search_context=search_context,
+                limit=requested_limit,
+            )
+            return CatalogSearchResult(
+                provider=self.provider_name,
+                query=normalized_query,
+                page=requested_page,
+                page_size=requested_limit,
+                total=total,
+                total_pages=total_pages,
+                items=items,
+            )
 
     def fetch_product_details(
         self,
@@ -419,16 +453,32 @@ class MercadoLivreCatalogProvider(BaseCatalogProvider):
             return base_message
         return f"{base_message} Mercado Livre response: {detail}"
 
-    def _is_forbidden_marketplace_search_error(self, exc: ExternalServiceError) -> bool:
-        normalized_message = exc.message.lower()
-        marketplace_search_path = f"/sites/{settings.mercado_livre_site_id.lower()}/search"
-        return "http 403" in normalized_message and marketplace_search_path in normalized_message
-
-    def _build_search_fetch_limit(self, requested_limit: int) -> int:
-        return max(
-            self._MIN_SEARCH_FETCH_LIMIT,
-            min(max(requested_limit * 2, requested_limit), self._MAX_SEARCH_FETCH_LIMIT),
+    def _build_catalog_search_path(
+        self,
+        *,
+        query: str,
+        limit: int,
+        offset: int,
+        search_context: MercadoLivreSearchContext,
+    ) -> str:
+        path = (
+            f"/products/search?status=active&site_id={settings.mercado_livre_site_id}"
+            f"&q={quote(query)}&limit={limit}&offset={offset}"
         )
+        if search_context.domain_id:
+            path = f"{path}&domain_id={quote(search_context.domain_id)}"
+        return path
+
+    def _extract_total_from_paging(self, payload: dict, *, fallback: int) -> int:
+        paging = payload.get("paging")
+        if isinstance(paging, dict):
+            total = paging.get("total")
+            try:
+                if total is not None:
+                    return max(int(total), 0)
+            except (TypeError, ValueError):
+                pass
+        return fallback
 
     def _normalize_http_error_text(self, value: str) -> str:
         normalized = re.sub(r"\s+", " ", value).strip()

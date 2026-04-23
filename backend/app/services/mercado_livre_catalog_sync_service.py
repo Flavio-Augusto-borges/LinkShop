@@ -20,9 +20,9 @@ class MercadoLivreCatalogSyncService:
     provider = MercadoLivreCatalogProvider()
 
     @classmethod
-    def search_products(cls, db: Session, *, query: str, limit: int = 10) -> CatalogSearchResult:
+    def search_products(cls, db: Session, *, query: str, limit: int = 10, page: int = 1) -> CatalogSearchResult:
         access_token = MercadoLivreOAuthService.resolve_access_token(db)
-        return cls.provider.search_products(query=query, limit=limit, access_token=access_token)
+        return cls.provider.search_products(query=query, limit=limit, page=page, access_token=access_token)
 
     @classmethod
     def preview_product_by_url(cls, db: Session, *, product_url: str) -> dict[str, object]:

@@ -25,11 +25,22 @@ from tests.factories import build_user
 class _FakeMercadoLivreProvider:
     provider_name = "mercado-livre-catalog"
 
-    def search_products(self, *, query: str, limit: int = 10, access_token: str | None = None) -> CatalogSearchResult:
+    def search_products(
+        self,
+        *,
+        query: str,
+        limit: int = 10,
+        page: int = 1,
+        access_token: str | None = None,
+    ) -> CatalogSearchResult:
         _ = access_token
         return CatalogSearchResult(
             provider=self.provider_name,
             query=query,
+            page=page,
+            page_size=limit,
+            total=1,
+            total_pages=1,
             items=[
                 CatalogSearchItem(
                     marketplace="mercado-livre",
@@ -161,6 +172,9 @@ def test_admin_mercado_livre_search_uses_stable_admin_route(
     payload = response.json()
     assert payload["provider"] == "mercado-livre-catalog"
     assert payload["query"] == "galaxy"
+    assert payload["page"] == 1
+    assert payload["page_size"] == 1
+    assert payload["total"] == 1
     assert payload["items"][0]["external_id"] == "MLB999999"
 
 
@@ -280,6 +294,8 @@ def test_mercado_livre_search_uses_catalog_products_endpoint_when_token_exists(m
             return [{"domain_id": "MLB-CELLPHONES", "category_id": "MLB1055"}]
 
         if path.startswith("/products/search?"):
+            assert "limit=5" in path
+            assert "offset=0" in path
             return {
                 "results": [
                     {
@@ -288,25 +304,14 @@ def test_mercado_livre_search_uses_catalog_products_endpoint_when_token_exists(m
                         "domain_id": "MLB-CELLPHONES",
                         "attributes": [{"id": "BRAND", "name": "Marca", "value_name": "Apple"}],
                         "permalink": "https://www.mercadolivre.com.br/iphone-13-128-gb-azul/p/MLB18500846",
+                        "buy_box_winner": {"price": 4299.0, "currency_id": "BRL"},
                     }
-                ]
+                ],
+                "paging": {"total": 37, "offset": 0, "limit": 5},
             }
 
         if path.startswith("/sites/MLB/search?"):
-            return {
-                "results": [
-                    {
-                        "id": "MLB111222333",
-                        "title": "Capa para iPhone 13",
-                        "category_id": "MLB1648",
-                        "domain_id": "MLB-CELLPHONE_CASES",
-                        "thumbnail": "https://http2.mlstatic.com/capa.jpg",
-                        "permalink": "https://produto.mercadolivre.com.br/MLB111222333-capa",
-                        "currency_id": "BRL",
-                        "price": 49.9,
-                    }
-                ]
-            }
+            raise AssertionError("Catalog search with access token should not depend on marketplace search")
 
         raise AssertionError(f"Unexpected path: {path}")
 
@@ -315,12 +320,13 @@ def test_mercado_livre_search_uses_catalog_products_endpoint_when_token_exists(m
     result = provider.search_products(query="iphone 13", limit=5, access_token="token")
 
     assert any(path.startswith("/products/search?") for path in requested_paths)
-    assert any(path.startswith("/sites/MLB/search?") for path in requested_paths)
     assert result.items[0].external_id == "MLB18500846"
     assert result.items[0].title == "iPhone 13 128 GB Azul"
+    assert result.total == 37
+    assert result.total_pages == 8
 
 
-def test_mercado_livre_search_caps_upstream_fetch_limit_for_large_preview_requests(monkeypatch) -> None:
+def test_mercado_livre_search_uses_offset_for_paginated_catalog_requests(monkeypatch) -> None:
     provider = MercadoLivreCatalogProvider()
     requested_paths: list[str] = []
 
@@ -332,26 +338,24 @@ def test_mercado_livre_search_caps_upstream_fetch_limit_for_large_preview_reques
             return [{"domain_id": "MLB-CELLPHONES", "category_id": "MLB1055"}]
 
         if path.startswith("/products/search?"):
-            return {"results": []}
-
-        if path.startswith("/sites/MLB/search?"):
-            raise ExternalServiceError(
-                "Mercado Livre API rejected catalog request with HTTP 403 on /sites/MLB/search. Mercado Livre response: forbidden",
-                code="MERCADO_LIVRE_HTTP_ERROR",
-                status_code=502,
-            )
+            return {"results": [], "paging": {"total": 96, "offset": 24, "limit": 24}}
 
         raise AssertionError(f"Unexpected path: {path}")
 
     monkeypatch.setattr(provider, "_get_json", fake_get_json)
 
-    provider.search_products(query="iphone 13", limit=48, access_token="token")
+    result = provider.search_products(query="iphone 13", limit=24, page=2, access_token="token")
 
     product_search_path = next(path for path in requested_paths if path.startswith("/products/search?"))
-    assert "limit=50" in product_search_path
+    assert "limit=24" in product_search_path
+    assert "offset=24" in product_search_path
+    assert result.page == 2
+    assert result.page_size == 24
+    assert result.total == 96
+    assert result.total_pages == 4
 
 
-def test_mercado_livre_search_uses_catalog_results_when_marketplace_search_is_forbidden(monkeypatch) -> None:
+def test_mercado_livre_search_uses_catalog_results_when_token_exists(monkeypatch) -> None:
     provider = MercadoLivreCatalogProvider()
 
     def fake_get_json(path: str, *, access_token: str | None = None) -> dict:
@@ -371,15 +375,9 @@ def test_mercado_livre_search_uses_catalog_results_when_marketplace_search_is_fo
                         "permalink": "https://www.mercadolivre.com.br/iphone-13-128-gb-azul/p/MLB18500846",
                         "buy_box_winner": {"price": 4299.0, "currency_id": "BRL"},
                     }
-                ]
+                ],
+                "paging": {"total": 1, "offset": 0, "limit": 5},
             }
-
-        if path.startswith("/sites/MLB/search?"):
-            raise ExternalServiceError(
-                "Mercado Livre API rejected catalog request with HTTP 403 on /sites/MLB/search. Mercado Livre response: forbidden",
-                code="MERCADO_LIVRE_HTTP_ERROR",
-                status_code=502,
-            )
 
         raise AssertionError(f"Unexpected path: {path}")
 
