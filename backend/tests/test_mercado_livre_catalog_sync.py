@@ -320,6 +320,47 @@ def test_mercado_livre_search_uses_catalog_products_endpoint_when_token_exists(m
     assert result.items[0].title == "iPhone 13 128 GB Azul"
 
 
+def test_mercado_livre_search_uses_catalog_results_when_marketplace_search_is_forbidden(monkeypatch) -> None:
+    provider = MercadoLivreCatalogProvider()
+
+    def fake_get_json(path: str, *, access_token: str | None = None) -> dict:
+        assert access_token == "token"
+
+        if path.startswith("/sites/MLB/domain_discovery/search?"):
+            return [{"domain_id": "MLB-CELLPHONES", "category_id": "MLB1055"}]
+
+        if path.startswith("/products/search?"):
+            return {
+                "results": [
+                    {
+                        "id": "MLB18500846",
+                        "name": "iPhone 13 128 GB Azul",
+                        "domain_id": "MLB-CELLPHONES",
+                        "attributes": [{"id": "BRAND", "name": "Marca", "value_name": "Apple"}],
+                        "permalink": "https://www.mercadolivre.com.br/iphone-13-128-gb-azul/p/MLB18500846",
+                        "buy_box_winner": {"price": 4299.0, "currency_id": "BRL"},
+                    }
+                ]
+            }
+
+        if path.startswith("/sites/MLB/search?"):
+            raise ExternalServiceError(
+                "Mercado Livre API rejected catalog request with HTTP 403 on /sites/MLB/search. Mercado Livre response: forbidden",
+                code="MERCADO_LIVRE_HTTP_ERROR",
+                status_code=502,
+            )
+
+        raise AssertionError(f"Unexpected path: {path}")
+
+    monkeypatch.setattr(provider, "_get_json", fake_get_json)
+
+    result = provider.search_products(query="iphone 13", limit=5, access_token="token")
+
+    assert len(result.items) == 1
+    assert result.items[0].external_id == "MLB18500846"
+    assert result.items[0].title == "iPhone 13 128 GB Azul"
+
+
 def test_mercado_livre_search_penalizes_accessories_when_query_targets_main_product(monkeypatch) -> None:
     provider = MercadoLivreCatalogProvider()
 

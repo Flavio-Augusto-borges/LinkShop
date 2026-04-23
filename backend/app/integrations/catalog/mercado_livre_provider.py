@@ -70,12 +70,6 @@ class MercadoLivreCatalogProvider(BaseCatalogProvider):
 
         requested_limit = max(1, min(limit, 50))
         search_context = self._discover_search_context(normalized_query, access_token=access_token)
-        marketplace_payload = self._get_json(
-            f"/sites/{settings.mercado_livre_site_id}/search?q={quote(normalized_query)}&limit={max(requested_limit * 3, 30)}",
-            access_token=access_token,
-        )
-        marketplace_items = self._parse_marketplace_search_results(marketplace_payload)
-
         catalog_items: list[CatalogSearchItem] = []
         if access_token:
             catalog_payload = self._get_json(
@@ -83,6 +77,18 @@ class MercadoLivreCatalogProvider(BaseCatalogProvider):
                 access_token=access_token,
             )
             catalog_items = self._parse_catalog_product_search_results(catalog_payload)
+
+        marketplace_items: list[CatalogSearchItem] = []
+        try:
+            marketplace_payload = self._get_json(
+                f"/sites/{settings.mercado_livre_site_id}/search?q={quote(normalized_query)}&limit={max(requested_limit * 3, 30)}",
+                access_token=access_token,
+            )
+        except ExternalServiceError as exc:
+            if not access_token or not self._is_forbidden_marketplace_search_error(exc):
+                raise
+        else:
+            marketplace_items = self._parse_marketplace_search_results(marketplace_payload)
 
         items = self._rank_search_results(
             query=normalized_query,
@@ -409,6 +415,11 @@ class MercadoLivreCatalogProvider(BaseCatalogProvider):
         if not detail:
             return base_message
         return f"{base_message} Mercado Livre response: {detail}"
+
+    def _is_forbidden_marketplace_search_error(self, exc: ExternalServiceError) -> bool:
+        normalized_message = exc.message.lower()
+        marketplace_search_path = f"/sites/{settings.mercado_livre_site_id.lower()}/search"
+        return "http 403" in normalized_message and marketplace_search_path in normalized_message
 
     def _normalize_http_error_text(self, value: str) -> str:
         normalized = re.sub(r"\s+", " ", value).strip()
