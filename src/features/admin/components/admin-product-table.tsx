@@ -402,9 +402,9 @@ export function AdminProductTable({
                   <div className="grid gap-3 md:min-w-[210px] md:justify-items-end">
                     <div className="rounded-[1.25rem] bg-orange-50 px-4 py-3 text-right">
                       <p className="text-xs font-bold uppercase tracking-[0.14em] text-coral">Preco</p>
-                      <strong className="font-display text-3xl text-ink">{formatCurrency(item.lowestPrice)}</strong>
+                      <strong className="value-safe font-display text-3xl text-ink">{formatCurrency(item.lowestPrice)}</strong>
                       {item.bestDiscountPercentage ? (
-                        <p className="text-xs font-semibold text-lagoon">{item.bestDiscountPercentage}% OFF</p>
+                        <p className="value-safe text-xs font-semibold text-lagoon">{item.bestDiscountPercentage}% OFF</p>
                       ) : null}
                     </div>
                   </div>

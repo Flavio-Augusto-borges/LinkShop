@@ -118,7 +118,7 @@ export function CartPageView() {
         action={
           <div className="grid gap-2 rounded-[1.5rem] bg-white px-5 py-4 text-sm text-neutral-500 shadow-glow">
             <span>{cart?.totalItems ?? 0} itens adicionados</span>
-            <span>Total estimado atual: {formatCurrency(estimatedCurrentTotal)}</span>
+            <span>Total estimado atual: <span className="value-safe">{formatCurrency(estimatedCurrentTotal)}</span></span>
           </div>
         }
       />
@@ -180,8 +180,8 @@ export function CartPageView() {
                     </div>
 
                     <div className="grid gap-1 text-sm text-neutral-500">
-                      <span>Preco atual: {formatCurrency(currentUnitPrice)}</span>
-                      <span>Total estimado: {formatCurrency(lineTotal)}</span>
+                      <span>Preco atual: <span className="value-safe">{formatCurrency(currentUnitPrice)}</span></span>
+                      <span>Total estimado: <span className="value-safe">{formatCurrency(lineTotal)}</span></span>
                       {currentOffer ? <span>{currentOffer.installmentText ?? "Pagamento a vista"}</span> : null}
                     </div>
                   </div>

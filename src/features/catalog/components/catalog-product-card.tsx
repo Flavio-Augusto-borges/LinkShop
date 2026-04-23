@@ -44,7 +44,7 @@ function CompactCatalogProductCard({ item }: { item: CatalogItem }) {
 
         <div className="absolute left-2 top-2">
           {item.bestDiscountPercentage > 0 ? (
-            <span className="rounded-full bg-gold px-1.5 py-0.5 text-[10px] font-bold text-ink">
+            <span className="value-safe rounded-full bg-gold px-1.5 py-0.5 text-[10px] font-bold text-ink">
               {item.bestDiscountPercentage}% OFF
             </span>
           ) : null}
@@ -58,7 +58,7 @@ function CompactCatalogProductCard({ item }: { item: CatalogItem }) {
       <div className="flex flex-1 flex-col">
         <div className="mb-1.5 flex items-center justify-between gap-2 text-[11px] font-medium uppercase tracking-[0.12em] text-neutral-500">
           <span className="truncate">{item.product.brand || item.product.category}</span>
-          <span className="shrink-0">{item.offers.length} ofertas</span>
+          <span className="value-safe shrink-0">{item.offers.length} ofertas</span>
         </div>
 
         <Link
@@ -70,7 +70,7 @@ function CompactCatalogProductCard({ item }: { item: CatalogItem }) {
         </Link>
 
         <div className="mt-3">
-          <p className="font-display text-xl leading-none text-ink">{formatPrice(item.lowestPrice)}</p>
+          <p className="value-safe font-display text-xl leading-none text-ink">{formatPrice(item.lowestPrice)}</p>
           <p className="mt-1 line-clamp-1 text-xs text-neutral-500">
             {supportText}
           </p>
@@ -79,7 +79,7 @@ function CompactCatalogProductCard({ item }: { item: CatalogItem }) {
         <div className="mt-auto pt-3">
           <div className="flex items-center justify-between gap-2 rounded-xl bg-black/[0.03] px-2.5 py-2 text-xs text-neutral-600">
             <span className="truncate">{bestStoreLabel ? `Melhor na ${bestStoreLabel}` : "Ofertas comparadas"}</span>
-            <span className="shrink-0 font-medium text-ink">
+            <span className="value-safe shrink-0 font-medium text-ink">
               {item.storeIds.length} lojas
             </span>
           </div>

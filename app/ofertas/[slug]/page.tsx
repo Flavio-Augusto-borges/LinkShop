@@ -90,18 +90,18 @@ export default async function ProductOfferPage({ params }: ProductOfferPageProps
           title={item.product.name}
           description="Entenda o produto, veja a oferta recomendada com clareza e compare as alternativas antes de sair para a loja."
           action={
-            <div className="grid gap-2 rounded-[1.5rem] bg-white px-5 py-4 text-sm text-neutral-500 shadow-glow">
-              <span>{offersResponse.data.length} ofertas encontradas</span>
-              <span>
+            <div className="grid max-w-full gap-2 rounded-[1.5rem] bg-white px-5 py-4 text-sm text-neutral-500 shadow-glow">
+              <span className="break-words">{offersResponse.data.length} ofertas encontradas</span>
+              <span className="break-words">
                 Melhor oferta: {bestOffer ? formatPrice(bestOffer.price) : formatPrice(item.lowestPrice)}
               </span>
-              <span>Menor preco: {formatPrice(item.lowestPrice)}</span>
+              <span className="break-words">Menor preco: {formatPrice(item.lowestPrice)}</span>
               {bestDiffersFromLowest && bestOffer ? (
-                <span>Melhor oferta x menor preco: {formatPrice(bestOffer.price - item.lowestPrice)}</span>
+                <span className="break-words">Melhor oferta x menor preco: {formatPrice(bestOffer.price - item.lowestPrice)}</span>
               ) : (
-                <span>Melhor oferta coincide com o menor preco.</span>
+                <span className="break-words">Melhor oferta coincide com o menor preco.</span>
               )}
-              <span>Economia possivel: {formatPrice(potentialSavings)}</span>
+              <span className="break-words">Economia possivel: {formatPrice(potentialSavings)}</span>
             </div>
           }
         />
@@ -121,9 +121,9 @@ export default async function ProductOfferPage({ params }: ProductOfferPageProps
               : "Cada oferta mostra loja, preco e acesso direto para voce finalizar na plataforma de origem."
           }
           action={
-            <div className="grid gap-1 text-right text-sm text-neutral-500">
-              <span>{offersResponse.data.length} ofertas comparaveis</span>
-              <span>CTAs com redirecionamento rastreado por parceiro</span>
+            <div className="grid max-w-full gap-1 text-right text-sm text-neutral-500">
+              <span className="break-words">{offersResponse.data.length} ofertas comparaveis</span>
+              <span className="break-words">CTAs com redirecionamento rastreado por parceiro</span>
             </div>
           }
         />
@@ -146,43 +146,43 @@ export default async function ProductOfferPage({ params }: ProductOfferPageProps
           description="Aqui ficam as informacoes complementares para aprofundar a decisao depois de entender a melhor oferta e comparar os marketplaces."
         />
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
-          <article className="rounded-[2rem] bg-white p-6 shadow-glow md:p-8">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(300px,380px)]">
+          <article className="min-w-0 rounded-[2rem] bg-white p-6 shadow-glow md:p-8">
             <div className="grid gap-4 sm:grid-cols-3">
-              <div className="rounded-[1.25rem] bg-black/5 p-4">
+              <div className="min-w-0 rounded-[1.25rem] bg-black/5 p-4">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-neutral-500">Marca</p>
-                <p className="mt-2 font-semibold text-ink">{productBrand}</p>
+                <p className="mt-2 break-words font-semibold text-ink">{productBrand}</p>
               </div>
-              <div className="rounded-[1.25rem] bg-black/5 p-4">
+              <div className="min-w-0 rounded-[1.25rem] bg-black/5 p-4">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-neutral-500">Categoria</p>
-                <p className="mt-2 font-semibold text-ink">{productCategory}</p>
+                <p className="mt-2 break-words font-semibold text-ink">{productCategory}</p>
               </div>
-              <div className="rounded-[1.25rem] bg-black/5 p-4">
+              <div className="min-w-0 rounded-[1.25rem] bg-black/5 p-4">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-neutral-500">Ofertas monitoradas</p>
-                <p className="mt-2 font-semibold text-ink">{offersResponse.data.length} lojas</p>
+                <p className="mt-2 break-words font-semibold text-ink">{offersResponse.data.length} lojas</p>
               </div>
             </div>
 
-            <div className="mt-6 rounded-[1.5rem] border border-black/5 bg-neutral-50 p-5">
+            <div className="mt-6 min-w-0 rounded-[1.5rem] border border-black/5 bg-neutral-50 p-5">
               <p className="text-xs font-extrabold uppercase tracking-[0.24em] text-coral">Sobre este produto</p>
-              <p className="mt-4 text-sm leading-8 text-neutral-600">{productDescription}</p>
+              <p className="mt-4 break-words text-sm leading-8 text-neutral-600">{productDescription}</p>
             </div>
 
-            <div className="mt-6 rounded-[1.5rem] border border-black/5 bg-white p-5">
+            <div className="mt-6 min-w-0 rounded-[1.5rem] border border-black/5 bg-white p-5">
               <p className="text-xs font-extrabold uppercase tracking-[0.24em] text-coral">Leitura da recomendacao</p>
               <div className="mt-4 grid gap-3 text-sm leading-7 text-neutral-600">
-                <p>
+                <p className="break-words">
                   Melhor oferta atual: {bestOffer ? formatPrice(bestOffer.price) : formatPrice(item.lowestPrice)} em{" "}
                   {bestOffer ? getStoreDisplayName(bestOffer.storeId) : "loja em atualizacao"}.
                 </p>
-                <p>Menor preco bruto encontrado: {formatPrice(item.lowestPrice)}.</p>
-                <p>Maior preco encontrado: {formatPrice(item.highestPrice, "Nao informado")}.</p>
-                {bestOffer?.rankingReason ? <p>Motivo resumido do ranking: {bestOffer.rankingReason}</p> : null}
+                <p className="break-words">Menor preco bruto encontrado: {formatPrice(item.lowestPrice)}.</p>
+                <p className="break-words">Maior preco encontrado: {formatPrice(item.highestPrice, "Nao informado")}.</p>
+                {bestOffer?.rankingReason ? <p className="break-words">Motivo resumido do ranking: {bestOffer.rankingReason}</p> : null}
               </div>
             </div>
           </article>
 
-          <div className="grid gap-6">
+          <div className="grid min-w-0 gap-6">
             <ProductPriceHistory summary={priceHistoryResponse.data} currentPriceFallback={item.lowestPrice} />
             <PriceWatchSettingsCard
               productId={item.product.id}

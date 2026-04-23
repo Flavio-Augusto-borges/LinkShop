@@ -27,12 +27,19 @@ export function PriceWatchToggleButton({
     <button
       type="button"
       onClick={() => void toggleWatch({ ownerId, productId, currentPrice })}
-      className={`inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition ${
-        active ? "bg-gold text-ink hover:bg-yellow-400" : "bg-black/5 text-ink hover:bg-black/10"
+      className={`inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coral/35 ${
+        variant === "full"
+          ? active
+            ? "border border-gold/40 bg-gold px-4 py-3 text-ink shadow-[0_12px_24px_rgba(255,214,10,0.18)] hover:bg-yellow-300"
+            : "border border-coral/25 bg-coral/10 px-4 py-3 text-coral shadow-[0_12px_24px_rgba(255,107,61,0.14)] hover:bg-coral/15"
+          : active
+            ? "bg-gold text-ink hover:bg-yellow-400"
+            : "bg-black/5 text-ink hover:bg-black/10"
       } ${variant === "full" ? "w-full md:w-auto" : ""}`}
       aria-pressed={active}
     >
-      {active ? "Acompanhando preco" : "Acompanhar preco"}
+      <span aria-hidden>{active ? "\u25cf" : "\u25cb"}</span>
+      <span>{active ? "Acompanhando preco" : "Acompanhar preco"}</span>
     </button>
   );
 }

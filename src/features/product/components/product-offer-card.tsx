@@ -61,7 +61,7 @@ export function ProductOfferCard({ item, offer, productHref, favoriteAction }: P
 
         <div className="absolute left-4 top-4 flex flex-wrap gap-2">
           {item.bestDiscountPercentage > 0 ? (
-            <span className="rounded-full bg-gold px-3 py-1 text-xs font-bold text-ink">
+            <span className="value-safe rounded-full bg-gold px-3 py-1 text-xs font-bold text-ink">
               {item.bestDiscountPercentage}% OFF
             </span>
           ) : null}
@@ -94,9 +94,9 @@ export function ProductOfferCard({ item, offer, productHref, favoriteAction }: P
         </div>
 
         <div className="flex items-end gap-3">
-          <strong className="font-display text-2xl">{formatPrice(resolvedOffer.price)}</strong>
+          <strong className="value-safe font-display text-2xl">{formatPrice(resolvedOffer.price)}</strong>
           {resolvedOffer.originalPrice ? (
-            <span className="text-sm text-neutral-400 line-through">{formatPrice(resolvedOffer.originalPrice, "")}</span>
+            <span className="value-safe text-sm text-neutral-400 line-through">{formatPrice(resolvedOffer.originalPrice, "")}</span>
           ) : null}
         </div>
 

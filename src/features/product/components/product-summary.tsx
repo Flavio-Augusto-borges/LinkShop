@@ -83,169 +83,157 @@ export function ProductSummary({ item }: ProductSummaryProps) {
     : "Recomendada por reunir o menor preco bruto com boa qualidade de entrega.";
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(280px,380px)_minmax(0,1fr)_minmax(320px,360px)]">
-      <article className="overflow-hidden rounded-[2rem] bg-white p-5 shadow-glow md:p-6">
-        <div className="relative min-h-[320px] overflow-hidden rounded-[1.5rem] bg-gradient-to-b from-orange-50 to-neutral-100 md:min-h-[380px]">
-          {safeImageUrl ? (
-            <Image
-              src={safeImageUrl}
-              alt={productName}
-              fill
-              sizes="(max-width: 1280px) 100vw, 380px"
-              className="object-contain p-5"
-            />
+    <div className="grid gap-6">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(340px,1fr)]">
+        <article className="min-w-0 rounded-[2rem] bg-white p-6 shadow-glow md:p-8">
+          <div className="grid gap-6 lg:grid-cols-[minmax(320px,460px)_minmax(0,1fr)] lg:items-start">
+            <div className="min-w-0">
+              <div className="relative min-h-[360px] overflow-hidden rounded-[1.75rem] bg-gradient-to-b from-orange-50 to-neutral-100 md:min-h-[460px]">
+                {safeImageUrl ? (
+                  <Image
+                    src={safeImageUrl}
+                    alt={productName}
+                    fill
+                    sizes="(max-width: 1024px) 100vw, (max-width: 1536px) 42vw, 460px"
+                    className="object-contain p-6 md:p-8"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center px-6 text-center text-sm text-neutral-500">
+                    Imagem indisponivel
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="min-w-0">
+              <div className="flex flex-wrap gap-2 text-xs font-semibold">
+                <span className="max-w-full rounded-full bg-black/5 px-3 py-1 text-neutral-700">{productCategory}</span>
+                <span className="max-w-full rounded-full bg-black/5 px-3 py-1 text-neutral-700">{productBrand}</span>
+                <span className="max-w-full rounded-full bg-coral/10 px-3 py-1 text-coral">{item.offers.length} ofertas</span>
+                {headlineDiscount > 0 ? (
+                  <span className="value-safe max-w-full rounded-full bg-gold px-3 py-1 text-ink">{headlineDiscount}% OFF</span>
+                ) : null}
+              </div>
+
+              <h2 className="mt-4 break-words font-display text-3xl leading-tight md:text-4xl xl:text-[3.2rem]">{productName}</h2>
+              <p className="mt-4 max-w-3xl break-words text-base leading-8 text-neutral-600 md:line-clamp-5">{productDescription}</p>
+            </div>
+          </div>
+        </article>
+
+        <aside className="min-w-0 rounded-[2rem] bg-gradient-to-br from-ink via-neutral-900 to-lagoon p-6 text-white shadow-glow">
+          <p className="text-xs font-extrabold uppercase tracking-[0.24em] text-coral">Decisao recomendada</p>
+          <h3 className="mt-3 break-words font-display text-2xl leading-tight xl:text-3xl">{bestOffer ? bestOfferStore : "Oferta indisponivel"}</h3>
+          <p className="mt-3 break-words text-sm leading-7 text-white/75">{decisionSummary}</p>
+
+          {bestOffer ? (
+            <>
+              <div className="mt-6 grid gap-3">
+                <div className="min-w-0 rounded-[1.5rem] bg-white/12 p-5">
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/70">Melhor oferta</p>
+                  <div className="mt-2 flex flex-wrap items-end gap-3">
+                    <strong className="value-safe font-display text-[2rem] leading-none sm:text-[2.35rem]">
+                      {formatPrice(bestOffer.price)}
+                    </strong>
+                    {bestOffer.originalPrice ? (
+                      <span className="value-safe text-sm text-white/60 line-through">
+                        {formatPrice(bestOffer.originalPrice, "")}
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="mt-2 break-words text-sm text-white/75">Recomendada em {bestOfferStore}.</p>
+                </div>
+
+                <div className="critical-metrics-grid">
+                  <div className="min-w-0 rounded-[1.5rem] bg-white/10 p-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/70">Menor preco</p>
+                    <strong className="value-safe mt-2 font-display text-[clamp(1.35rem,2.2vw,1.9rem)] leading-tight">
+                      {formatPrice(item.lowestPrice)}
+                    </strong>
+                  </div>
+                  <div className="min-w-0 rounded-[1.5rem] bg-white/10 p-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/70">Economia possivel</p>
+                    <strong className="value-safe mt-2 font-display text-[clamp(1.35rem,2.2vw,1.9rem)] leading-tight">
+                      {formatPrice(crossStoreSavings !== null ? Math.max(crossStoreSavings, 0) : null)}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              <a
+                href={getOfferRedirectHref(bestOffer, {
+                  source: "produto_detalhe",
+                  position: 1,
+                  category: item.product.category,
+                  sectionType: "oferta_recomendada"
+                })}
+                target="_blank"
+                rel="noreferrer noopener sponsored"
+                className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-coral px-5 py-4 text-base font-semibold text-white transition hover:bg-orange-600"
+              >
+                <span className="line-clamp-2 text-center">Ir para oferta na {bestOfferStore}</span>
+              </a>
+              <p className="mt-3 text-center text-xs leading-6 text-white/70">Voce sera levado para a loja parceira em uma nova aba.</p>
+            </>
           ) : (
-            <div className="flex h-full w-full items-center justify-center px-6 text-center text-sm text-neutral-500">
-              Imagem indisponivel
+            <div className="mt-6 rounded-[1.5rem] bg-white/10 p-5 text-sm text-white/80">
+              Ainda nao ha oferta valida para este produto. Tente novamente em alguns instantes.
             </div>
           )}
-        </div>
-      </article>
 
-      <article className="rounded-[2rem] bg-white p-6 shadow-glow md:p-8">
-        <div className="flex flex-wrap gap-2 text-xs font-semibold">
-          <span className="rounded-full bg-black/5 px-3 py-1 text-neutral-700">{productCategory}</span>
-          <span className="rounded-full bg-black/5 px-3 py-1 text-neutral-700">{productBrand}</span>
-          <span className="rounded-full bg-coral/10 px-3 py-1 text-coral">{item.offers.length} ofertas</span>
-          {headlineDiscount > 0 ? (
-            <span className="rounded-full bg-gold px-3 py-1 text-ink">{headlineDiscount}% OFF</span>
-          ) : null}
-        </div>
-
-        <h2 className="mt-4 font-display text-4xl leading-tight md:text-5xl">{productName}</h2>
-        <p className="mt-4 max-w-3xl text-base leading-8 text-neutral-600 md:line-clamp-4">{productDescription}</p>
-
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-[1.5rem] bg-orange-50 p-4">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-coral">Melhor oferta</p>
-            <strong className="mt-2 block font-display text-3xl text-ink">{formatPrice(bestOfferPrice)}</strong>
-            <p className="mt-2 text-sm text-neutral-600">Recomendacao atual em {bestOfferStore}.</p>
+          <div className="mt-6 rounded-[1.5rem] bg-white/10 p-3">
+            <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-white/70">Acoes rapidas</p>
+            <ProductIntentActions
+              productId={item.product.id}
+              offerId={item.bestOffer?.id}
+              unitPrice={bestOfferPrice}
+              layout="stack"
+              includePriceWatch
+            />
           </div>
+        </aside>
+      </div>
 
-          <div className="rounded-[1.5rem] bg-neutral-100 p-4">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-500">Menor preco</p>
-            <strong className="mt-2 block font-display text-3xl text-ink">{formatPrice(item.lowestPrice)}</strong>
-            <p className="mt-2 text-sm text-neutral-600">Referencia para comparar todas as lojas.</p>
-          </div>
-
-          <div className="rounded-[1.5rem] bg-neutral-100 p-4">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-500">Economia possivel</p>
-            <strong className="mt-2 block font-display text-3xl text-ink">
-              {formatPrice(crossStoreSavings !== null ? Math.max(crossStoreSavings, 0) : null)}
-            </strong>
-            <p className="mt-2 text-sm text-neutral-600">Diferenca entre a menor e a maior oferta do momento.</p>
-          </div>
-        </div>
-
-        <div className="mt-6 grid gap-3 text-sm text-neutral-600 sm:grid-cols-2">
-          <div className="rounded-[1.25rem] bg-black/5 px-4 py-3">
+      <section className="rounded-[2rem] bg-white p-6 shadow-glow md:p-8">
+        <div className="critical-metrics-grid">
+          <div className="min-w-0 rounded-[1.25rem] bg-black/5 px-4 py-4">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-neutral-500">Loja recomendada</p>
-            <p className="mt-2 font-semibold text-ink">{bestOfferStore}</p>
+            <p className="mt-2 break-words font-semibold text-ink">{bestOfferStore}</p>
+            <p className="mt-1 break-words text-xs text-neutral-500">Vendido por {bestOfferSeller}</p>
           </div>
-          <div className="rounded-[1.25rem] bg-black/5 px-4 py-3">
+
+          <div className="min-w-0 rounded-[1.25rem] bg-black/5 px-4 py-4">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-neutral-500">Ultima atualizacao</p>
-            <p className="mt-2 font-semibold text-ink">{bestOfferUpdatedAt}</p>
+            <p className="mt-2 break-words font-semibold text-ink">{bestOfferUpdatedAt}</p>
+            <p className="mt-1 break-words text-xs text-neutral-500">{bestOffer?.installmentText ?? "Pagamento a vista"}</p>
           </div>
-          <div className="rounded-[1.25rem] bg-black/5 px-4 py-3">
+
+          <div className="min-w-0 rounded-[1.25rem] bg-black/5 px-4 py-4">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-neutral-500">Qualidade da oferta</p>
-            <p className="mt-2 font-semibold text-ink">
+            <p className="mt-2 break-words font-semibold text-ink">
               {bestQualityLabel}
               {bestQualityScore !== null ? ` (${bestQualityScore}/100)` : ""}
             </p>
           </div>
-          <div className="rounded-[1.25rem] bg-black/5 px-4 py-3">
+
+          <div className="min-w-0 rounded-[1.25rem] bg-black/5 px-4 py-4">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-neutral-500">Comparacao rapida</p>
-            <p className="mt-2 font-semibold text-ink">
+            <p className="mt-2 break-words font-semibold text-ink">
               {bestDiffersFromLowest && bestOffer
                 ? `Diferenca para o menor preco: ${formatPrice(bestOffer.price - item.lowestPrice)}`
                 : "Melhor oferta coincide com o menor preco bruto."}
             </p>
           </div>
-        </div>
 
-        <div className="mt-6 rounded-[1.5rem] border border-black/5 bg-white p-4">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-neutral-500">Motivo da recomendacao</p>
-          <p className="mt-3 text-sm leading-7 text-neutral-600">{rankingReason ?? decisionSummary}</p>
-          {bestOfferSavings > 0 ? (
-            <p className="mt-2 text-sm text-neutral-600">Economia neste anuncio: {formatPrice(bestOfferSavings)}.</p>
-          ) : null}
-        </div>
-      </article>
-
-      <aside className="rounded-[2rem] bg-gradient-to-br from-ink via-neutral-900 to-lagoon p-6 text-white shadow-glow">
-        <p className="text-xs font-extrabold uppercase tracking-[0.24em] text-coral">Decisao recomendada</p>
-        <h3 className="mt-3 font-display text-3xl leading-tight">{bestOffer ? bestOfferStore : "Oferta indisponivel"}</h3>
-        <p className="mt-3 text-sm leading-7 text-white/75">{decisionSummary}</p>
-
-        {bestOffer ? (
-          <>
-            <div className="mt-6 rounded-[1.5rem] bg-white/10 p-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm text-white/70">Melhor preco para comprar agora</p>
-                  <strong className="font-display text-4xl">{formatPrice(bestOffer.price)}</strong>
-                </div>
-                {bestOffer.originalPrice ? (
-                  <span className="text-sm text-white/60 line-through">{formatPrice(bestOffer.originalPrice, "")}</span>
-                ) : null}
-              </div>
-
-              <div className="mt-4 grid gap-2 text-sm text-white/75">
-                <p>Loja: {bestOfferStore}</p>
-                <p>Vendido por {bestOfferSeller}</p>
-                <p>{bestOffer.installmentText ?? "Pagamento a vista"}</p>
-                <p>Atualizada: {bestOfferUpdatedAt}</p>
-              </div>
-
-              <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold">
-                <span className="rounded-full bg-white/15 px-3 py-1">
-                  Qualidade: {bestQualityLabel}
-                  {bestQualityScore !== null ? ` (${bestQualityScore}/100)` : ""}
-                </span>
-                {bestDiffersFromLowest ? (
-                  <span className="rounded-full bg-white/15 px-3 py-1">
-                    Menor preco bruto: {formatPrice(item.lowestPrice)}
-                  </span>
-                ) : (
-                  <span className="rounded-full bg-white/15 px-3 py-1">Tambem e o menor preco bruto</span>
-                )}
-                {bestOfferSavings > 0 ? (
-                  <span className="rounded-full bg-white/15 px-3 py-1">Economia: {formatPrice(bestOfferSavings)}</span>
-                ) : null}
-              </div>
-            </div>
-
-            <a
-              href={getOfferRedirectHref(bestOffer, {
-                source: "produto_detalhe",
-                position: 1,
-                category: item.product.category,
-                sectionType: "oferta_recomendada"
-              })}
-              target="_blank"
-              rel="noreferrer noopener sponsored"
-              className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-coral px-5 py-4 text-base font-semibold text-white transition hover:bg-orange-600"
-            >
-              Ir para oferta na {bestOfferStore}
-            </a>
-            <p className="mt-3 text-center text-xs text-white/70">Voce sera levado para a loja parceira em uma nova aba.</p>
-          </>
-        ) : (
-          <div className="mt-6 rounded-[1.5rem] bg-white/10 p-5 text-sm text-white/80">
-            Ainda nao ha oferta valida para este produto. Tente novamente em alguns instantes.
+          <div className="min-w-0 rounded-[1.25rem] bg-black/5 px-4 py-4 [grid-column:1/-1]">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-neutral-500">Motivo da recomendacao</p>
+            <p className="mt-3 break-words text-sm leading-7 text-neutral-600">{rankingReason ?? decisionSummary}</p>
+            {bestOfferSavings > 0 ? (
+              <p className="mt-2 break-words text-sm text-neutral-600">Economia neste anuncio: {formatPrice(bestOfferSavings)}.</p>
+            ) : null}
           </div>
-        )}
-
-        <div className="mt-6">
-          <ProductIntentActions
-            productId={item.product.id}
-            offerId={item.bestOffer?.id}
-            unitPrice={bestOfferPrice}
-            layout="stack"
-            includePriceWatch
-          />
         </div>
-      </aside>
+      </section>
     </div>
   );
 }

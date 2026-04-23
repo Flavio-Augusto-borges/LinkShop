@@ -88,71 +88,71 @@ export function OfferList({ offers, bestOfferId, context }: OfferListProps) {
                 : "border-black/5 bg-white"
             }`}
           >
-            <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+            <div className="flex min-w-0 flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
               <div className="space-y-4 xl:min-w-0 xl:flex-1">
                 <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
-                  <span className="rounded-full bg-lagoon/10 px-3 py-1 text-lagoon">{getStoreDisplayName(offer.storeId)}</span>
+                  <span className="max-w-full rounded-full bg-lagoon/10 px-3 py-1 text-lagoon">{getStoreDisplayName(offer.storeId)}</span>
                   {isBestOffer ? (
-                    <span className="rounded-full bg-coral px-3 py-1 text-white">Melhor oferta</span>
+                    <span className="max-w-full rounded-full bg-coral px-3 py-1 text-white">Melhor oferta</span>
                   ) : (
-                    <span className="rounded-full bg-black/5 px-3 py-1 text-neutral-600">Opcao #{index + 1}</span>
+                    <span className="max-w-full rounded-full bg-black/5 px-3 py-1 text-neutral-600">Opcao #{index + 1}</span>
                   )}
                   {isLowestPrice ? (
-                    <span className="rounded-full bg-lagoon px-3 py-1 text-white">Menor preco</span>
+                    <span className="max-w-full rounded-full bg-lagoon px-3 py-1 text-white">Menor preco</span>
                   ) : null}
                   {discount > 0 ? (
-                    <span className="rounded-full bg-gold px-3 py-1 text-ink">{discount}% OFF</span>
+                    <span className="value-safe max-w-full rounded-full bg-gold px-3 py-1 text-ink">{discount}% OFF</span>
                   ) : null}
-                  <span className="rounded-full bg-black/5 px-3 py-1 text-neutral-600">
+                  <span className="max-w-full rounded-full bg-black/5 px-3 py-1 text-neutral-600">
                     {getAvailabilityLabel(offer.availability)}
                   </span>
                   {qualityScore !== null ? (
-                    <span className="rounded-full bg-black/5 px-3 py-1 text-neutral-700">Qualidade {qualityScore}/100</span>
+                    <span className="value-safe max-w-full rounded-full bg-black/5 px-3 py-1 text-neutral-700">Qualidade {qualityScore}/100</span>
                   ) : null}
                 </div>
 
-                <div>
-                  <h3 className="line-clamp-2 font-display text-2xl" title={offerTitle}>
+                <div className="min-w-0">
+                  <h3 className="line-clamp-2 break-words font-display text-xl sm:text-2xl" title={offerTitle}>
                     {offerTitle}
                   </h3>
-                  <p className="mt-1 text-sm text-neutral-500">Vendido por {sellerName}</p>
+                  <p className="mt-1 break-words text-sm text-neutral-500">Vendido por {sellerName}</p>
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-[1rem] bg-black/5 px-4 py-3">
+                  <div className="min-w-0 rounded-[1rem] bg-black/5 px-4 py-3">
                     <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-500">Condicao</p>
-                    <p className="mt-2 text-sm font-medium text-ink">{offer.installmentText ?? "Pagamento a vista"}</p>
+                    <p className="mt-2 break-words text-sm font-medium text-ink">{offer.installmentText ?? "Pagamento a vista"}</p>
                   </div>
-                  <div className="rounded-[1rem] bg-black/5 px-4 py-3">
+                  <div className="min-w-0 rounded-[1rem] bg-black/5 px-4 py-3">
                     <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-500">Frete</p>
-                    <p className="mt-2 text-sm font-medium text-ink">
+                    <p className="mt-2 break-words text-sm font-medium text-ink">
                       {offer.shippingCost != null ? formatPrice(offer.shippingCost) : "Consultar na loja"}
                     </p>
                   </div>
-                  <div className="rounded-[1rem] bg-black/5 px-4 py-3">
+                  <div className="min-w-0 rounded-[1rem] bg-black/5 px-4 py-3">
                     <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-500">Atualizacao</p>
-                    <p className="mt-2 text-sm font-medium text-ink">{updatedAt}</p>
+                    <p className="mt-2 break-words text-sm font-medium text-ink">{updatedAt}</p>
                   </div>
                 </div>
 
                 {isBestOffer && offer.rankingReason ? (
-                  <div className="rounded-[1rem] border border-coral/20 bg-coral/5 px-4 py-3 text-sm text-neutral-600">
+                  <div className="min-w-0 rounded-[1rem] border border-coral/20 bg-coral/5 px-4 py-3 text-sm text-neutral-600">
                     <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-coral">Motivo da recomendacao</p>
-                    <p className="mt-2 line-clamp-2">{offer.rankingReason}</p>
+                    <p className="mt-2 line-clamp-2 break-words">{offer.rankingReason}</p>
                   </div>
                 ) : null}
               </div>
 
-              <div className="grid gap-3 xl:min-w-[270px] xl:max-w-[270px] xl:justify-items-end">
-                <div className={`w-full rounded-2xl px-4 py-4 text-left xl:text-right ${isBestOffer ? "bg-coral/10" : "bg-black/5"}`}>
+              <div className="grid min-w-0 gap-3 xl:min-w-[250px] xl:max-w-[250px] xl:justify-items-end">
+                <div className={`w-full min-w-0 rounded-2xl px-4 py-4 text-left xl:text-right ${isBestOffer ? "bg-coral/10" : "bg-black/5"}`}>
                   <p className="text-xs font-bold uppercase tracking-[0.18em] text-neutral-500">Preco final</p>
-                  <div className="mt-3 flex items-end gap-3 xl:justify-end">
-                    <strong className="font-display text-3xl">{formatPrice(offer.price)}</strong>
+                  <div className="mt-3 flex flex-wrap items-end gap-3 xl:justify-end">
+                    <strong className="value-safe font-display text-2xl sm:text-3xl">{formatPrice(offer.price)}</strong>
                     {offer.originalPrice ? (
-                      <span className="text-sm text-neutral-400 line-through">{formatPrice(offer.originalPrice, "")}</span>
+                      <span className="value-safe text-sm text-neutral-400 line-through">{formatPrice(offer.originalPrice, "")}</span>
                     ) : null}
                   </div>
-                  <p className="mt-3 text-sm text-neutral-500">
+                  <p className="mt-3 break-words text-sm text-neutral-500">
                     {isBestOffer
                       ? "Escolhida como melhor combinacao de preco, qualidade e disponibilidade."
                       : isLowestPrice
@@ -171,13 +171,13 @@ export function OfferList({ offers, bestOfferId, context }: OfferListProps) {
                   })}
                   target="_blank"
                   rel="noreferrer noopener sponsored"
-                  className={`inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition ${
+                  className={`inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-center text-sm font-semibold transition xl:w-auto ${
                     isBestOffer ? "bg-coral text-white hover:bg-orange-600" : "bg-ink text-white hover:bg-neutral-800"
                   }`}
                 >
-                  Ir para oferta na {getStoreDisplayName(offer.storeId)}
+                  <span className="line-clamp-2">Ir para oferta na {getStoreDisplayName(offer.storeId)}</span>
                 </a>
-                <p className="text-xs text-neutral-500 xl:text-right">Nova aba com redirecionamento de parceiro.</p>
+                <p className="break-words text-xs text-neutral-500 xl:text-right">Nova aba com redirecionamento de parceiro.</p>
               </div>
             </div>
           </article>

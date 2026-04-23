@@ -34,6 +34,24 @@ body {
   @apply glass-panel mt-6 p-5 md:p-7;
 }
 
+.value-safe {
+  @apply inline-block max-w-full whitespace-nowrap tabular-nums;
+}
+
+.value-safe-block {
+  @apply block max-w-full whitespace-nowrap tabular-nums;
+}
+
+.value-safe-inline {
+  @apply inline-flex max-w-full items-baseline gap-1 whitespace-nowrap tabular-nums;
+}
+
+.critical-metrics-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+}
+
 .number-input {
   appearance: textfield;
 }

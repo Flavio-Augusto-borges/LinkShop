@@ -293,7 +293,7 @@ export function AccountPageView() {
             <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-5">
               <article className="rounded-[1.75rem] bg-white p-5 shadow-glow">
                 <p className="text-xs font-extrabold uppercase tracking-[0.24em] text-coral">Favoritos</p>
-                <p className="mt-4 font-display text-4xl text-ink">{userFavorites.length}</p>
+                <p className="value-safe mt-4 font-display text-4xl text-ink">{userFavorites.length}</p>
                 <p className="mt-2 text-sm text-neutral-500">Produtos salvos para comparar depois.</p>
                 <button
                   type="button"
@@ -306,7 +306,7 @@ export function AccountPageView() {
 
               <article className="rounded-[1.75rem] bg-white p-5 shadow-glow">
                 <p className="text-xs font-extrabold uppercase tracking-[0.24em] text-coral">Carrinho</p>
-                <p className="mt-4 font-display text-4xl text-ink">{userCart?.totalItems ?? 0}</p>
+                <p className="value-safe mt-4 font-display text-4xl text-ink">{userCart?.totalItems ?? 0}</p>
                 <p className="mt-2 text-sm text-neutral-500">Itens em acompanhamento no seu carrinho.</p>
                 <button
                   type="button"
@@ -319,7 +319,7 @@ export function AccountPageView() {
 
               <article className="rounded-[1.75rem] bg-white p-5 shadow-glow">
                 <p className="text-xs font-extrabold uppercase tracking-[0.24em] text-coral">Recentes</p>
-                <p className="mt-4 font-display text-4xl text-ink">{userRecentViews.length}</p>
+                <p className="value-safe mt-4 font-display text-4xl text-ink">{userRecentViews.length}</p>
                 <p className="mt-2 text-sm text-neutral-500">Produtos vistos recentemente para retomar rapido.</p>
                 <button
                   type="button"
@@ -332,7 +332,7 @@ export function AccountPageView() {
 
               <article className="rounded-[1.75rem] bg-white p-5 shadow-glow">
                 <p className="text-xs font-extrabold uppercase tracking-[0.24em] text-coral">Alertas</p>
-                <p className="mt-4 font-display text-4xl text-ink">{userWatchCount}</p>
+                <p className="value-safe mt-4 font-display text-4xl text-ink">{userWatchCount}</p>
                 <p className="mt-2 text-sm text-neutral-500">Produtos com acompanhamento de preco ativo.</p>
                 <button
                   type="button"
@@ -457,7 +457,7 @@ export function AccountPageView() {
               </div>
               <div className="grid gap-1 rounded-[1.25rem] bg-black/5 px-4 py-3 text-sm text-neutral-600">
                 <span>{userCart?.totalItems ?? 0} itens</span>
-                <span>Total estimado: {formatCurrency(estimatedCurrentTotal)}</span>
+                <span>Total estimado: <span className="value-safe">{formatCurrency(estimatedCurrentTotal)}</span></span>
               </div>
             </div>
 
@@ -508,7 +508,7 @@ export function AccountPageView() {
                               : "Sem oferta disponivel no momento."}
                           </p>
                           <div className="grid gap-1 text-sm text-neutral-600">
-                            <span>Preco atual: {formatCurrency(currentUnitPrice)}</span>
+                            <span>Preco atual: <span className="value-safe">{formatCurrency(currentUnitPrice)}</span></span>
                             <span>Quantidade: {cartItem.quantity}</span>
                           </div>
                         </div>

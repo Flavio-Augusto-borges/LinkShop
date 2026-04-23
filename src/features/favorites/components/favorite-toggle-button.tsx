@@ -22,11 +22,15 @@ export function FavoriteToggleButton({ productId, variant = "compact" }: Favorit
     <button
       type="button"
       onClick={() => void toggleFavorite({ userId: ownerId, productId })}
-      className={`inline-flex items-center justify-center rounded-full text-sm font-semibold transition ${
+      className={`inline-flex items-center justify-center gap-2 rounded-full text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coral/35 ${
         variant === "icon"
           ? active
             ? "h-9 w-9 bg-gold/90 text-ink hover:bg-gold"
             : "h-9 w-9 bg-white/90 text-neutral-600 hover:bg-white"
+          : variant === "full"
+            ? active
+              ? "border border-gold/40 bg-gold px-4 py-3 text-ink shadow-[0_12px_24px_rgba(255,214,10,0.18)] hover:bg-yellow-300"
+              : "border border-white/40 bg-white/95 px-4 py-3 text-ink shadow-[0_12px_24px_rgba(15,23,42,0.08)] hover:bg-white"
           : active
             ? "bg-coral px-4 py-2 text-white hover:bg-orange-600"
             : "bg-black/5 px-4 py-2 text-ink hover:bg-black/10"
@@ -37,9 +41,15 @@ export function FavoriteToggleButton({ productId, variant = "compact" }: Favorit
       {variant === "icon" ? (
         <span aria-hidden>{active ? "\u2605" : "\u2606"}</span>
       ) : active ? (
-        "Salvo nos favoritos"
+        <>
+          <span aria-hidden>\u2605</span>
+          <span>Salvo nos favoritos</span>
+        </>
       ) : (
-        "Salvar favorito"
+        <>
+          <span aria-hidden>\u2606</span>
+          <span>Salvar favorito</span>
+        </>
       )}
     </button>
   );
