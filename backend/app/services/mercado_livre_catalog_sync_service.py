@@ -13,33 +13,39 @@ from app.models.offer import Offer
 from app.models.price_history import PriceHistory
 from app.models.product import Product
 from app.models.store import Store
+from app.services.mercado_livre_oauth_service import MercadoLivreOAuthService
 
 
 class MercadoLivreCatalogSyncService:
     provider = MercadoLivreCatalogProvider()
 
     @classmethod
-    def search_products(cls, *, query: str, limit: int = 10) -> CatalogSearchResult:
-        return cls.provider.search_products(query=query, limit=limit)
+    def search_products(cls, db: Session, *, query: str, limit: int = 10) -> CatalogSearchResult:
+        access_token = MercadoLivreOAuthService.resolve_access_token(db)
+        return cls.provider.search_products(query=query, limit=limit, access_token=access_token)
 
     @classmethod
-    def preview_product_by_url(cls, *, product_url: str) -> dict[str, object]:
-        payload = cls.provider.fetch_product_details(product_url=product_url)
+    def preview_product_by_url(cls, db: Session, *, product_url: str) -> dict[str, object]:
+        access_token = MercadoLivreOAuthService.resolve_access_token(db)
+        payload = cls.provider.fetch_product_details(product_url=product_url, access_token=access_token)
         return cls._build_preview_payload(payload=payload, source_reference=product_url)
 
     @classmethod
-    def preview_product_by_external_id(cls, *, external_id: str) -> dict[str, object]:
-        payload = cls.provider.fetch_product_details(external_id=external_id)
+    def preview_product_by_external_id(cls, db: Session, *, external_id: str) -> dict[str, object]:
+        access_token = MercadoLivreOAuthService.resolve_access_token(db)
+        payload = cls.provider.fetch_product_details(external_id=external_id, access_token=access_token)
         return cls._build_preview_payload(payload=payload, source_reference=external_id)
 
     @classmethod
     def sync_product_by_url(cls, db: Session, *, product_url: str) -> dict[str, object]:
-        payload = cls.provider.fetch_product_details(product_url=product_url)
+        access_token = MercadoLivreOAuthService.resolve_access_token(db)
+        payload = cls.provider.fetch_product_details(product_url=product_url, access_token=access_token)
         return cls._sync_payload(db, payload=payload, source_reference=product_url)
 
     @classmethod
     def sync_product_by_external_id(cls, db: Session, *, external_id: str) -> dict[str, object]:
-        payload = cls.provider.fetch_product_details(external_id=external_id)
+        access_token = MercadoLivreOAuthService.resolve_access_token(db)
+        payload = cls.provider.fetch_product_details(external_id=external_id, access_token=access_token)
         return cls._sync_payload(db, payload=payload, source_reference=external_id)
 
     @classmethod

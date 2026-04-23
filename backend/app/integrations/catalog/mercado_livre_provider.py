@@ -2,11 +2,13 @@ import json
 import re
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
+from socket import timeout as SocketTimeout
+from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlparse
 from urllib.request import Request, urlopen
 
 from app.core.config import settings
-from app.core.exceptions import BusinessRuleError, NotFoundError
+from app.core.exceptions import BusinessRuleError, ExternalServiceError, NotFoundError
 from app.integrations.catalog.base import BaseCatalogProvider
 from app.integrations.catalog.types import CatalogOfferPayload, CatalogProductPayload, CatalogSearchItem, CatalogSearchResult
 from app.services.admin_product_import_service import AdminProductImportService
@@ -16,13 +18,14 @@ class MercadoLivreCatalogProvider(BaseCatalogProvider):
     provider_name = "mercado-livre-catalog"
     marketplace = "mercado-livre"
 
-    def search_products(self, *, query: str, limit: int = 10) -> CatalogSearchResult:
+    def search_products(self, *, query: str, limit: int = 10, access_token: str | None = None) -> CatalogSearchResult:
         normalized_query = query.strip()
         if not normalized_query:
             raise BusinessRuleError("Query is required to search Mercado Livre catalog", code="CATALOG_QUERY_REQUIRED")
 
         payload = self._get_json(
-            f"/sites/{settings.mercado_livre_site_id}/search?q={quote(normalized_query)}&limit={max(1, min(limit, 50))}"
+            f"/sites/{settings.mercado_livre_site_id}/search?q={quote(normalized_query)}&limit={max(1, min(limit, 50))}",
+            access_token=access_token,
         )
 
         items: list[CatalogSearchItem] = []
@@ -55,11 +58,19 @@ class MercadoLivreCatalogProvider(BaseCatalogProvider):
         *,
         external_id: str | None = None,
         product_url: str | None = None,
+        access_token: str | None = None,
     ) -> CatalogProductPayload:
         resolved_external_id = self._resolve_external_id(external_id=external_id, product_url=product_url)
-        item = self._get_json(f"/items/{quote(resolved_external_id)}")
-        description_payload = self._get_optional_json(f"/items/{quote(resolved_external_id)}/description")
-        seller_payload = self._get_optional_json(f"/users/{item['seller_id']}") if item.get("seller_id") else None
+        item = self._get_json(f"/items/{quote(resolved_external_id)}", access_token=access_token)
+        description_payload = self._get_optional_json(
+            f"/items/{quote(resolved_external_id)}/description",
+            access_token=access_token,
+        )
+        seller_payload = (
+            self._get_optional_json(f"/users/{item['seller_id']}", access_token=access_token)
+            if item.get("seller_id")
+            else None
+        )
         synced_at = datetime.now(timezone.utc)
 
         title = self._normalize_optional_text(item.get("title"))
@@ -130,20 +141,55 @@ class MercadoLivreCatalogProvider(BaseCatalogProvider):
 
         return parsed_external_id
 
-    def _get_json(self, path: str) -> dict:
+    def _get_json(self, path: str, *, access_token: str | None = None) -> dict:
+        url = f"{settings.mercado_livre_api_base_url.rstrip('/')}{path}"
+        headers = {
+            "Accept": "application/json",
+            "User-Agent": "LinkShop/1.0 (+https://link-shop-navy.vercel.app)",
+        }
+        if access_token:
+            headers["Authorization"] = f"Bearer {access_token}"
         request = Request(
-            f"{settings.mercado_livre_api_base_url.rstrip('/')}{path}",
-            headers={
-                "Accept": "application/json",
-                "User-Agent": "LinkShopBot/1.0",
-            },
+            url,
+            headers=headers,
         )
-        with urlopen(request, timeout=settings.mercado_livre_timeout_seconds) as response:
-            return json.loads(response.read().decode("utf-8"))
-
-    def _get_optional_json(self, path: str) -> dict | None:
         try:
-            return self._get_json(path)
+            with urlopen(request, timeout=settings.mercado_livre_timeout_seconds) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except HTTPError as exc:
+            message = f"Mercado Livre API rejected catalog request with HTTP {exc.code}."
+            if exc.code == 403:
+                message = "Mercado Livre API rejected the local catalog request with HTTP 403. Check request headers, rate limits, or network policy."
+            if exc.code == 404:
+                raise NotFoundError("Mercado Livre item was not found", code="MERCADO_LIVRE_ITEM_NOT_FOUND") from exc
+            raise ExternalServiceError(
+                message,
+                code="MERCADO_LIVRE_HTTP_ERROR",
+                status_code=502,
+            ) from exc
+        except (TimeoutError, SocketTimeout) as exc:
+            raise ExternalServiceError(
+                f"Mercado Livre API timed out after {settings.mercado_livre_timeout_seconds} seconds.",
+                code="MERCADO_LIVRE_TIMEOUT",
+                status_code=504,
+            ) from exc
+        except URLError as exc:
+            reason = str(getattr(exc, "reason", exc))
+            raise ExternalServiceError(
+                f"Could not connect to Mercado Livre API: {reason}",
+                code="MERCADO_LIVRE_NETWORK_ERROR",
+                status_code=502,
+            ) from exc
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            raise ExternalServiceError(
+                "Mercado Livre API returned an invalid JSON response.",
+                code="MERCADO_LIVRE_INVALID_RESPONSE",
+                status_code=502,
+            ) from exc
+
+    def _get_optional_json(self, path: str, *, access_token: str | None = None) -> dict | None:
+        try:
+            return self._get_json(path, access_token=access_token)
         except Exception:
             return None
 

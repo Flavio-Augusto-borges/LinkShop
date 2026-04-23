@@ -231,11 +231,17 @@ class AuthService:
     def _is_refresh_session_usable(session: AuthSession) -> bool:
         if session.revoked_at is not None:
             return False
-        return session.refresh_expires_at > datetime.now(timezone.utc)
+        return AuthService._as_aware_utc(session.refresh_expires_at) > datetime.now(timezone.utc)
 
     @staticmethod
     def _is_access_session_usable(session: AuthSession) -> bool:
         return AuthService._is_refresh_session_usable(session)
+
+    @staticmethod
+    def _as_aware_utc(value: datetime) -> datetime:
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
 
     @staticmethod
     def _create_user(

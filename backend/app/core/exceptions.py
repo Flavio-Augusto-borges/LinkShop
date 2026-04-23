@@ -39,3 +39,8 @@ class ConflictError(AppError):
 class BusinessRuleError(AppError):
     status_code = 400
     code = "BUSINESS_RULE_VIOLATION"
+
+
+class ExternalServiceError(AppError):
+    status_code = 502
+    code = "EXTERNAL_SERVICE_ERROR"

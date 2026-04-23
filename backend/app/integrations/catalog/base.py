@@ -7,7 +7,7 @@ class BaseCatalogProvider(ABC):
     provider_name: str
 
     @abstractmethod
-    def search_products(self, *, query: str, limit: int = 10) -> CatalogSearchResult:
+    def search_products(self, *, query: str, limit: int = 10, access_token: str | None = None) -> CatalogSearchResult:
         raise NotImplementedError
 
     @abstractmethod
@@ -16,5 +16,6 @@ class BaseCatalogProvider(ABC):
         *,
         external_id: str | None = None,
         product_url: str | None = None,
+        access_token: str | None = None,
     ) -> CatalogProductPayload:
         raise NotImplementedError

@@ -15,6 +15,10 @@ from app.integrations.registry import integration_registry
 configure_logging(settings.log_level)
 validate_critical_environment(settings)
 
+
+def _parse_cors_origins(raw_origins: str) -> list[str]:
+    return [origin.strip().rstrip("/") for origin in raw_origins.split(",") if origin.strip()]
+
 app = FastAPI(
     title=settings.app_name,
     debug=settings.app_debug,
@@ -24,10 +28,7 @@ app = FastAPI(
 app.add_middleware(RequestContextMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "https://link-shop-navy.vercel.app"
-    ],
+    allow_origins=_parse_cors_origins(settings.cors_origins),
     allow_origin_regex=r"^https://link-shop-navy-[a-z0-9-]+\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["*"],

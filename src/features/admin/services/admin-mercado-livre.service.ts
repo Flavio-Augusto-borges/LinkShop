@@ -60,6 +60,44 @@ type BackendMercadoLivreSyncResult = {
   synced_at: string;
 };
 
+type BackendMercadoLivreOAuthStatus = {
+  provider: string;
+  is_configured: boolean;
+  is_connected: boolean;
+  connection_source: string;
+  auth_base_url: string;
+  redirect_uri?: string | null;
+  account_id?: string | null;
+  account_name?: string | null;
+  scopes?: string | null;
+  connected_at?: string | null;
+  access_token_expires_at?: string | null;
+  last_error_code?: string | null;
+  last_error_message?: string | null;
+};
+
+type BackendMercadoLivreOAuthAuthorize = {
+  provider: string;
+  authorization_url: string;
+  redirect_uri: string;
+};
+
+export type AdminMercadoLivreOAuthStatus = {
+  provider: string;
+  isConfigured: boolean;
+  isConnected: boolean;
+  connectionSource: string;
+  authBaseUrl: string;
+  redirectUri?: string;
+  accountId?: string;
+  accountName?: string;
+  scopes?: string;
+  connectedAt?: string;
+  accessTokenExpiresAt?: string;
+  lastErrorCode?: string;
+  lastErrorMessage?: string;
+};
+
 function mapPreview(payload: BackendMercadoLivrePreview): AdminImportedProduct {
   return {
     provider: payload.provider,
@@ -113,14 +151,64 @@ function mapSyncResult(payload: BackendMercadoLivreSyncResult): AdminMercadoLivr
   };
 }
 
+function mapOAuthStatus(payload: BackendMercadoLivreOAuthStatus): AdminMercadoLivreOAuthStatus {
+  return {
+    provider: payload.provider,
+    isConfigured: payload.is_configured,
+    isConnected: payload.is_connected,
+    connectionSource: payload.connection_source,
+    authBaseUrl: payload.auth_base_url,
+    redirectUri: payload.redirect_uri ?? undefined,
+    accountId: payload.account_id ?? undefined,
+    accountName: payload.account_name ?? undefined,
+    scopes: payload.scopes ?? undefined,
+    connectedAt: payload.connected_at ?? undefined,
+    accessTokenExpiresAt: payload.access_token_expires_at ?? undefined,
+    lastErrorCode: payload.last_error_code ?? undefined,
+    lastErrorMessage: payload.last_error_message ?? undefined
+  };
+}
+
 export const adminMercadoLivreService = {
+  async getOAuthStatus(): Promise<ApiResponse<AdminMercadoLivreOAuthStatus>> {
+    const response = await apiClient.get<BackendMercadoLivreOAuthStatus>("/admin/integrations/mercado-livre/oauth/status");
+
+    if (!response.ok) {
+      return response;
+    }
+
+    return { ...response, data: mapOAuthStatus(response.data) };
+  },
+
+  async getAuthorizeUrl(): Promise<ApiResponse<{ authorizationUrl: string; redirectUri: string }>> {
+    const response = await apiClient.get<BackendMercadoLivreOAuthAuthorize>(
+      "/admin/integrations/mercado-livre/oauth/authorize"
+    );
+
+    if (!response.ok) {
+      return response;
+    }
+
+    return {
+      ...response,
+      data: {
+        authorizationUrl: response.data.authorization_url,
+        redirectUri: response.data.redirect_uri
+      }
+    };
+  },
+
+  async disconnectOAuthConnection(): Promise<ApiResponse<null>> {
+    return apiClient.delete<null>("/admin/integrations/mercado-livre/oauth/connection");
+  },
+
   async searchProducts(query: string, limit = 10): Promise<ApiResponse<AdminMercadoLivreSearchResult>> {
     const params = new URLSearchParams({
       q: query.trim(),
       limit: String(limit)
     });
     const response = await apiClient.get<BackendMercadoLivreSearchResult>(
-      `/dev/catalog/mercado-livre/search?${params.toString()}`
+      `/admin/catalog/mercado-livre/search?${params.toString()}`
     );
 
     if (!response.ok) {
@@ -140,7 +228,7 @@ export const adminMercadoLivreService = {
   async previewByUrl(url: string): Promise<ApiResponse<AdminImportedProduct>> {
     const params = new URLSearchParams({ url: url.trim() });
     const response = await apiClient.get<BackendMercadoLivrePreview>(
-      `/dev/catalog/mercado-livre/preview/by-url?${params.toString()}`
+      `/admin/catalog/mercado-livre/preview/by-url?${params.toString()}`
     );
 
     if (!response.ok) {
@@ -153,7 +241,7 @@ export const adminMercadoLivreService = {
   async previewByExternalId(externalId: string): Promise<ApiResponse<AdminImportedProduct>> {
     const params = new URLSearchParams({ externalId: externalId.trim() });
     const response = await apiClient.get<BackendMercadoLivrePreview>(
-      `/dev/catalog/mercado-livre/preview/by-external-id?${params.toString()}`
+      `/admin/catalog/mercado-livre/preview/by-external-id?${params.toString()}`
     );
 
     if (!response.ok) {
@@ -166,7 +254,7 @@ export const adminMercadoLivreService = {
   async syncByUrl(url: string): Promise<ApiResponse<AdminMercadoLivreSyncResult>> {
     const params = new URLSearchParams({ url: url.trim() });
     const response = await apiClient.post<BackendMercadoLivreSyncResult>(
-      `/dev/catalog/mercado-livre/by-url?${params.toString()}`
+      `/admin/catalog/mercado-livre/by-url?${params.toString()}`
     );
 
     if (!response.ok) {
@@ -179,7 +267,7 @@ export const adminMercadoLivreService = {
   async syncByExternalId(externalId: string): Promise<ApiResponse<AdminMercadoLivreSyncResult>> {
     const params = new URLSearchParams({ externalId: externalId.trim() });
     const response = await apiClient.post<BackendMercadoLivreSyncResult>(
-      `/dev/catalog/mercado-livre/by-external-id?${params.toString()}`
+      `/admin/catalog/mercado-livre/by-external-id?${params.toString()}`
     );
 
     if (!response.ok) {

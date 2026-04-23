@@ -1,10 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 
 import { AdminSectionNav } from "@/features/admin/components/admin-section-nav";
-import { adminMercadoLivreService } from "@/features/admin/services/admin-mercado-livre.service";
+import {
+  adminMercadoLivreService,
+  type AdminMercadoLivreOAuthStatus
+} from "@/features/admin/services/admin-mercado-livre.service";
 import { useAdminImportReviewStore } from "@/features/admin/store/admin-import-review.store";
 import type {
   AdminImportedProduct,
@@ -25,6 +29,19 @@ function formatPrice(value?: number) {
   }).format(value);
 }
 
+function formatDateTime(value?: string) {
+  if (!value) {
+    return "Nao disponivel";
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return parsed.toLocaleString("pt-BR");
+}
+
 type FeedbackState =
   | {
       type: "success" | "error";
@@ -34,6 +51,7 @@ type FeedbackState =
   | null;
 
 export function AdminMercadoLivreIntegrationView() {
+  const searchParams = useSearchParams();
   const drafts = useAdminImportReviewStore((state) => state.drafts);
   const addDraftFromImport = useAdminImportReviewStore((state) => state.addDraftFromImport);
 
@@ -43,6 +61,7 @@ export function AdminMercadoLivreIntegrationView() {
   const [searchResult, setSearchResult] = useState<AdminMercadoLivreSearchResult | null>(null);
   const [lastPreview, setLastPreview] = useState<AdminImportedProduct | null>(null);
   const [lastSync, setLastSync] = useState<AdminMercadoLivreSyncResult | null>(null);
+  const [oauthStatus, setOauthStatus] = useState<AdminMercadoLivreOAuthStatus | null>(null);
   const [feedback, setFeedback] = useState<FeedbackState>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
 
@@ -51,6 +70,105 @@ export function AdminMercadoLivreIntegrationView() {
     () => drafts.filter((entry) => entry.draft.storeId === "mercado-livre").slice(0, 5),
     [drafts]
   );
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadOAuthStatus() {
+      const response = await adminMercadoLivreService.getOAuthStatus();
+      if (!ignore && response.ok) {
+        setOauthStatus(response.data);
+      }
+    }
+
+    void loadOAuthStatus();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const oauthState = searchParams.get("oauth");
+    if (!oauthState) {
+      return;
+    }
+
+    if (oauthState === "connected") {
+      setFeedback({
+        type: "success",
+        title: "Conta conectada",
+        message: "A autorizacao do Mercado Livre foi concluida com sucesso."
+      });
+      void refreshOAuthStatus();
+      return;
+    }
+
+    if (oauthState === "error") {
+      setFeedback({
+        type: "error",
+        title: "Falha na conexao OAuth",
+        message: searchParams.get("oauth_message") || "O Mercado Livre retornou um erro durante a autorizacao."
+      });
+      void refreshOAuthStatus();
+    }
+  }, [searchParams]);
+
+  async function refreshOAuthStatus() {
+    const response = await adminMercadoLivreService.getOAuthStatus();
+    if (!response.ok) {
+      setFeedback({
+        type: "error",
+        title: "Falha ao consultar OAuth",
+        message: response.error.message
+      });
+      return;
+    }
+
+    setOauthStatus(response.data);
+  }
+
+  async function connectOAuth() {
+    setBusyKey("oauth-connect");
+    setFeedback(null);
+
+    const response = await adminMercadoLivreService.getAuthorizeUrl();
+    if (!response.ok) {
+      setFeedback({
+        type: "error",
+        title: "Falha ao iniciar conexao",
+        message: response.error.message
+      });
+      setBusyKey(null);
+      return;
+    }
+
+    window.location.assign(response.data.authorizationUrl);
+  }
+
+  async function disconnectOAuth() {
+    setBusyKey("oauth-disconnect");
+    setFeedback(null);
+
+    const response = await adminMercadoLivreService.disconnectOAuthConnection();
+    if (!response.ok) {
+      setFeedback({
+        type: "error",
+        title: "Falha ao desconectar",
+        message: response.error.message
+      });
+      setBusyKey(null);
+      return;
+    }
+
+    await refreshOAuthStatus();
+    setFeedback({
+      type: "success",
+      title: "Conexao removida",
+      message: "As credenciais salvas no banco local foram removidas."
+    });
+    setBusyKey(null);
+  }
 
   async function handleSearch() {
     const query = searchTerm.trim();
@@ -294,6 +412,80 @@ export function AdminMercadoLivreIntegrationView() {
         description="Busque produtos, envie para revisao manual e sincronize dados do catalogo oficial sem acoplar monetizacao a origem do dado."
       />
       <AdminSectionNav />
+
+      <div className="mb-6 rounded-[1.5rem] bg-white p-5 shadow-glow">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2 text-sm font-semibold">
+              <span
+                className={`rounded-full px-3 py-1 ${
+                  oauthStatus?.isConnected
+                    ? "bg-lagoon/10 text-lagoon"
+                    : oauthStatus?.isConfigured
+                      ? "bg-gold/20 text-ink"
+                      : "bg-coral/10 text-coral"
+                }`}
+              >
+                {oauthStatus?.isConnected ? "Conta conectada" : oauthStatus?.isConfigured ? "OAuth configurado" : "OAuth pendente"}
+              </span>
+              {oauthStatus?.connectionSource ? (
+                <span className="rounded-full bg-black/5 px-3 py-1 text-neutral-600">
+                  Fonte: {oauthStatus.connectionSource}
+                </span>
+              ) : null}
+            </div>
+            <h3 className="mt-3 font-display text-2xl">Autorizacao Mercado Livre</h3>
+            <p className="mt-2 text-sm text-neutral-600">
+              Conecte a aplicacao a uma conta Mercado Livre para habilitar chamadas autenticadas e parar de depender de acesso publico instavel.
+            </p>
+            <div className="mt-4 grid gap-2 text-sm text-neutral-600 md:grid-cols-2">
+              <p>
+                Redirect URI: <span className="font-semibold text-ink">{oauthStatus?.redirectUri || "Nao configurada"}</span>
+              </p>
+              <p>
+                Conta: <span className="font-semibold text-ink">{oauthStatus?.accountName || oauthStatus?.accountId || "Nao conectada"}</span>
+              </p>
+              <p>
+                Expira em: <span className="font-semibold text-ink">{formatDateTime(oauthStatus?.accessTokenExpiresAt)}</span>
+              </p>
+              <p>
+                Ultimo erro: <span className="font-semibold text-ink">{oauthStatus?.lastErrorCode || "Nenhum"}</span>
+              </p>
+            </div>
+            {oauthStatus?.lastErrorMessage ? (
+              <p className="mt-3 text-sm text-coral">{oauthStatus.lastErrorMessage}</p>
+            ) : null}
+          </div>
+
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => void refreshOAuthStatus()}
+              className="inline-flex items-center justify-center rounded-full border border-black/10 bg-white px-4 py-3 text-sm font-semibold text-ink transition hover:bg-black/5"
+            >
+              Atualizar status
+            </button>
+            <button
+              type="button"
+              onClick={() => void connectOAuth()}
+              disabled={busyKey === "oauth-connect"}
+              className="inline-flex items-center justify-center rounded-full bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-60"
+            >
+              {busyKey === "oauth-connect" ? "Redirecionando..." : "Conectar conta"}
+            </button>
+            {oauthStatus?.connectionSource === "database" ? (
+              <button
+                type="button"
+                onClick={() => void disconnectOAuth()}
+                disabled={busyKey === "oauth-disconnect"}
+                className="inline-flex items-center justify-center rounded-full border border-coral/20 bg-coral/10 px-4 py-3 text-sm font-semibold text-coral transition hover:bg-coral/15 disabled:opacity-60"
+              >
+                {busyKey === "oauth-disconnect" ? "Removendo..." : "Desconectar"}
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </div>
 
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <span className="rounded-full bg-gold px-4 py-2 text-sm font-semibold text-ink">

@@ -8,7 +8,7 @@ if str(BACKEND_DIR) not in sys.path:
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -36,6 +36,12 @@ def db_session() -> Generator[Session, None, None]:
         poolclass=StaticPool,
         future=True,
     )
+
+    @event.listens_for(engine, "connect")
+    def register_sqlite_functions(dbapi_connection, connection_record) -> None:
+        _ = connection_record
+        dbapi_connection.create_function("char_length", 1, lambda value: len(value or ""))
+
     TestingSessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
     Base.metadata.create_all(bind=engine)
 

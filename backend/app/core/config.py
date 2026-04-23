@@ -24,12 +24,20 @@ class Settings(BaseSettings):
     access_token_ttl_minutes: int = 15
     refresh_token_ttl_days: int = 30
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+    frontend_app_url: str = "http://127.0.0.1:3000"
     alert_price_drop_threshold_percentage: float = 1.0
     log_level: str = "INFO"
     integration_json_feed_path: str = "backend/app/integrations/fixtures/sample_partner_feed.json"
     mercado_livre_api_base_url: str = "https://api.mercadolibre.com"
+    mercado_livre_auth_base_url: str = "https://auth.mercadolibre.com.br"
     mercado_livre_site_id: str = "MLB"
     mercado_livre_timeout_seconds: int = 12
+    mercado_livre_app_id: str = ""
+    mercado_livre_client_secret: SecretStr = SecretStr("")
+    mercado_livre_redirect_uri: str = ""
+    mercado_livre_access_token: SecretStr = SecretStr("")
+    mercado_livre_refresh_token: SecretStr = SecretStr("")
+    mercado_livre_oauth_scope: str = ""
     allow_remote_database_in_development: bool = False
 
     model_config = SettingsConfigDict(
@@ -80,11 +88,27 @@ class Settings(BaseSettings):
         if not self.mercado_livre_api_base_url.strip():
             raise ValueError("MERCADO_LIVRE_API_BASE_URL must not be blank")
 
+        if not self.mercado_livre_auth_base_url.strip():
+            raise ValueError("MERCADO_LIVRE_AUTH_BASE_URL must not be blank")
+
         if not self.mercado_livre_site_id.strip():
             raise ValueError("MERCADO_LIVRE_SITE_ID must not be blank")
 
         if self.mercado_livre_timeout_seconds <= 0:
             raise ValueError("MERCADO_LIVRE_TIMEOUT_SECONDS must be greater than zero")
+
+        oauth_fields = {
+            "MERCADO_LIVRE_APP_ID": self.mercado_livre_app_id.strip(),
+            "MERCADO_LIVRE_CLIENT_SECRET": self.mercado_livre_client_secret.get_secret_value().strip(),
+            "MERCADO_LIVRE_REDIRECT_URI": self.mercado_livre_redirect_uri.strip(),
+        }
+        configured_oauth_fields = [key for key, value in oauth_fields.items() if value]
+        if configured_oauth_fields and len(configured_oauth_fields) != len(oauth_fields):
+            missing_oauth_fields = [key for key, value in oauth_fields.items() if not value]
+            raise ValueError(
+                "Mercado Livre OAuth settings must be configured together. "
+                f"Missing: {', '.join(missing_oauth_fields)}"
+            )
 
         return self
 

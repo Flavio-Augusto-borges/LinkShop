@@ -5,6 +5,7 @@ from app.models.auth_session import AuthSession
 from app.models.click_event import ClickEvent
 from app.models.compare_list_item import CompareListItem
 from app.models.favorite import Favorite
+from app.models.integration_connection import IntegrationConnection
 from app.models.integration_sync_run import IntegrationSyncRun
 from app.models.offer import Offer
 from app.models.price_history import PriceHistory
@@ -19,6 +20,7 @@ __all__ = [
     "Store",
     "Offer",
     "Favorite",
+    "IntegrationConnection",
     "IntegrationSyncRun",
     "CompareListItem",
     "PriceHistory",

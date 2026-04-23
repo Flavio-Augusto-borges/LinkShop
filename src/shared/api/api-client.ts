@@ -15,7 +15,10 @@ type ApiRequestOptions = {
   headers?: HeadersInit;
   cache?: RequestCache;
   skipAuthRefresh?: boolean;
+  timeoutMs?: number;
 };
+
+const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
 
 function createMeta() {
   return {
@@ -42,12 +45,48 @@ function extractErrorMessage(payload: unknown, fallback: string) {
 
     if (Array.isArray(detail)) {
       return detail
-        .map((entry) => (entry && typeof entry === "object" && "msg" in entry ? String(entry.msg) : "Erro de validação"))
+        .map((entry) => (entry && typeof entry === "object" && "msg" in entry ? String(entry.msg) : "Erro de validacao"))
         .join(", ");
     }
   }
 
   return fallback;
+}
+
+function extractErrorCode(payload: unknown, fallback: string) {
+  if (payload && typeof payload === "object" && "error" in payload) {
+    const errorValue = payload.error;
+    if (errorValue && typeof errorValue === "object" && "code" in errorValue) {
+      return String(errorValue.code);
+    }
+  }
+
+  return fallback;
+}
+
+function parseJsonPayload(text: string): { ok: true; data: unknown } | { ok: false } {
+  if (!text) {
+    return { ok: true, data: null };
+  }
+
+  try {
+    return { ok: true, data: JSON.parse(text) as unknown };
+  } catch {
+    return { ok: false };
+  }
+}
+
+function createTimeoutController(timeoutMs: number) {
+  const controller = new AbortController();
+  const timeout = globalThis.setTimeout(() => controller.abort(), timeoutMs);
+  return { controller, timeout };
+}
+
+function isAbortError(error: unknown) {
+  return (
+    error instanceof Error &&
+    (error.name === "AbortError" || error.message.toLowerCase().includes("aborted"))
+  );
 }
 
 type BackendRefreshSession = {
@@ -65,6 +104,8 @@ async function refreshAccessToken(): Promise<string | null> {
     return null;
   }
 
+  const { controller, timeout } = createTimeoutController(DEFAULT_REQUEST_TIMEOUT_MS);
+
   try {
     const response = await fetch(`${getBackendApiBaseUrl()}/auth/refresh`, {
       method: "POST",
@@ -72,7 +113,8 @@ async function refreshAccessToken(): Promise<string | null> {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({ refresh_token: refreshToken }),
-      cache: "no-store"
+      cache: "no-store",
+      signal: controller.signal
     });
 
     if (!response.ok) {
@@ -80,7 +122,14 @@ async function refreshAccessToken(): Promise<string | null> {
       return null;
     }
 
-    const payload = (await response.json()) as BackendRefreshSession;
+    const text = await response.text();
+    const parsed = parseJsonPayload(text);
+    if (!parsed.ok) {
+      clearStoredAccessToken();
+      return null;
+    }
+
+    const payload = parsed.data as BackendRefreshSession;
     setStoredSessionTokens({
       accessToken: payload.access_token,
       refreshToken: payload.refresh_token,
@@ -91,6 +140,8 @@ async function refreshAccessToken(): Promise<string | null> {
   } catch {
     clearStoredAccessToken();
     return null;
+  } finally {
+    globalThis.clearTimeout(timeout);
   }
 }
 
@@ -100,11 +151,13 @@ async function request<T>(path: string, options: ApiRequestOptions = {}): Promis
       ok: false,
       error: {
         code: "BACKEND_NOT_CONFIGURED",
-        message: "A integração com o backend não está configurada."
+        message: "A integracao com o backend nao esta configurada."
       },
       meta: createMeta()
     };
   }
+
+  const { controller, timeout } = createTimeoutController(options.timeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS);
 
   try {
     const resolvedToken = options.token ?? getStoredAccessToken();
@@ -116,11 +169,13 @@ async function request<T>(path: string, options: ApiRequestOptions = {}): Promis
         ...options.headers
       },
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
-      cache: options.cache ?? "no-store"
+      cache: options.cache ?? "no-store",
+      signal: controller.signal
     });
 
     const text = await response.text();
-    const payload = text ? (JSON.parse(text) as unknown) : null;
+    const parsedPayload = parseJsonPayload(text);
+    const payload = parsedPayload.ok ? parsedPayload.data : null;
 
     if (
       response.status === 401 &&
@@ -142,8 +197,21 @@ async function request<T>(path: string, options: ApiRequestOptions = {}): Promis
       return {
         ok: false,
         error: {
-          code: `HTTP_${response.status}`,
-          message: extractErrorMessage(payload, "Não foi possível concluir a requisição.")
+          code: extractErrorCode(payload, `HTTP_${response.status}`),
+          message: parsedPayload.ok
+            ? extractErrorMessage(payload, "Nao foi possivel concluir a requisicao.")
+            : `Backend retornou HTTP ${response.status}, mas a resposta nao veio em JSON valido.`
+        },
+        meta: createMeta()
+      };
+    }
+
+    if (!parsedPayload.ok) {
+      return {
+        ok: false,
+        error: {
+          code: "INVALID_BACKEND_RESPONSE",
+          message: "Backend retornou uma resposta invalida ou nao JSON."
         },
         meta: createMeta()
       };
@@ -154,15 +222,28 @@ async function request<T>(path: string, options: ApiRequestOptions = {}): Promis
       data: payload as T,
       meta: createMeta()
     };
-  } catch {
+  } catch (error) {
+    if (isAbortError(error)) {
+      return {
+        ok: false,
+        error: {
+          code: "REQUEST_TIMEOUT",
+          message: "Tempo limite ao conectar com o backend."
+        },
+        meta: createMeta()
+      };
+    }
+
     return {
       ok: false,
       error: {
         code: "NETWORK_ERROR",
-        message: "Falha ao conectar com o backend."
+        message: `Falha de rede ao conectar com o backend em ${getBackendApiBaseUrl()}.`
       },
       meta: createMeta()
     };
+  } finally {
+    globalThis.clearTimeout(timeout);
   }
 }
 

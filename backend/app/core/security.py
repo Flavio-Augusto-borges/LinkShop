@@ -53,11 +53,14 @@ def _sign(value: str) -> str:
 
 
 def create_access_token(user_id: str, session_id: str) -> tuple[str, datetime]:
-    expires_at = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_ttl_minutes)
+    issued_at = datetime.now(timezone.utc)
+    expires_at = issued_at + timedelta(minutes=settings.access_token_ttl_minutes)
     payload = {
         "sub": user_id,
         "sid": session_id,
         "typ": "access",
+        "iat": int(issued_at.timestamp()),
+        "jti": secrets.token_urlsafe(8),
         "exp": int(expires_at.timestamp()),
     }
     encoded_payload = _base64url_encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
