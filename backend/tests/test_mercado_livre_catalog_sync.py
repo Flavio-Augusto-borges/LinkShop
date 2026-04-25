@@ -340,6 +340,9 @@ def test_mercado_livre_search_uses_offset_for_paginated_catalog_requests(monkeyp
         if path.startswith("/products/search?"):
             return {"results": [], "paging": {"total": 96, "offset": 24, "limit": 24}}
 
+        if path.startswith("/sites/MLB/search?"):
+            return {"results": [], "paging": {"total": 96, "offset": 24, "limit": 24}}
+
         raise AssertionError(f"Unexpected path: {path}")
 
     monkeypatch.setattr(provider, "_get_json", fake_get_json)
@@ -388,6 +391,63 @@ def test_mercado_livre_search_uses_catalog_results_when_token_exists(monkeypatch
     assert len(result.items) == 1
     assert result.items[0].external_id == "MLB18500846"
     assert result.items[0].title == "iPhone 13 128 GB Azul"
+
+
+def test_mercado_livre_search_falls_back_to_marketplace_when_catalog_has_no_buyable_items(monkeypatch) -> None:
+    provider = MercadoLivreCatalogProvider()
+    requested_paths: list[str] = []
+
+    def fake_get_json(path: str, *, access_token: str | None = None) -> dict:
+        assert access_token == "token"
+        requested_paths.append(path)
+
+        if path.startswith("/sites/MLB/domain_discovery/search?"):
+            return [{"domain_id": "MLB-CELLPHONES", "category_id": "MLB1055"}]
+
+        if path.startswith("/products/search?"):
+            return {
+                "results": [
+                    {
+                        "id": "MLB40287828",
+                        "name": "Apple iPhone 16 Plus (512 GB) - Rosa",
+                        "domain_id": "MLB-CELLPHONES",
+                        "attributes": [{"id": "BRAND", "name": "Marca", "value_name": "Apple"}],
+                        "buy_box_winner": {},
+                    }
+                ],
+                "paging": {"total": 787, "offset": 0, "limit": 5},
+            }
+
+        if path.startswith("/sites/MLB/search?"):
+            return {
+                "results": [
+                    {
+                        "id": "MLB123456789",
+                        "title": "Apple iPhone 16 256 GB Preto",
+                        "category_id": "MLB1055",
+                        "domain_id": "MLB-CELLPHONES",
+                        "permalink": "https://produto.mercadolivre.com.br/MLB123456789-iphone-16-256gb",
+                        "currency_id": "BRL",
+                        "price": 5199.0,
+                        "original_price": 5499.0,
+                        "condition": "new",
+                        "attributes": [{"id": "BRAND", "name": "Marca", "value_name": "Apple"}],
+                    }
+                ],
+                "paging": {"total": 1, "offset": 0, "limit": 5},
+            }
+
+        raise AssertionError(f"Unexpected path: {path}")
+
+    monkeypatch.setattr(provider, "_get_json", fake_get_json)
+
+    result = provider.search_products(query="iphone 16", limit=5, access_token="token")
+
+    assert any(path.startswith("/products/search?") for path in requested_paths)
+    assert any(path.startswith("/sites/MLB/search?") for path in requested_paths)
+    assert len(result.items) == 1
+    assert result.items[0].external_id == "MLB123456789"
+    assert result.items[0].title == "Apple iPhone 16 256 GB Preto"
 
 
 def test_mercado_livre_search_penalizes_accessories_when_query_targets_main_product(monkeypatch) -> None:

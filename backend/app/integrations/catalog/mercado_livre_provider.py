@@ -81,33 +81,35 @@ class MercadoLivreCatalogProvider(BaseCatalogProvider):
         requested_offset = (requested_page - 1) * requested_limit
         search_context = self._discover_search_context(normalized_query, access_token=access_token)
         if access_token:
+            catalog_search_path = self._build_catalog_search_path(
+                query=normalized_query,
+                limit=requested_limit,
+                offset=requested_offset,
+                search_context=search_context,
+            )
             catalog_payload = self._get_json(
-                self._build_catalog_search_path(
-                    query=normalized_query,
-                    limit=requested_limit,
-                    offset=requested_offset,
-                    search_context=search_context,
-                ),
+                catalog_search_path,
                 access_token=access_token,
             )
             catalog_items = self._parse_catalog_product_search_results(catalog_payload)
-            total = self._extract_total_from_paging(catalog_payload, fallback=len(catalog_items))
-            total_pages = max(1, math.ceil(total / requested_limit)) if total else 1
-            items = self._rank_search_results(
-                query=normalized_query,
-                items=catalog_items,
-                search_context=search_context,
-                limit=requested_limit,
-            )
-            return CatalogSearchResult(
-                provider=self.provider_name,
-                query=normalized_query,
-                page=requested_page,
-                page_size=requested_limit,
-                total=total,
-                total_pages=total_pages,
-                items=items,
-            )
+            if catalog_items:
+                total = self._extract_total_from_paging(catalog_payload, fallback=len(catalog_items))
+                total_pages = max(1, math.ceil(total / requested_limit)) if total else 1
+                items = self._rank_search_results(
+                    query=normalized_query,
+                    items=catalog_items,
+                    search_context=search_context,
+                    limit=requested_limit,
+                )
+                return CatalogSearchResult(
+                    provider=self.provider_name,
+                    query=normalized_query,
+                    page=requested_page,
+                    page_size=requested_limit,
+                    total=total,
+                    total_pages=total_pages,
+                    items=items,
+                )
 
         try:
             marketplace_payload = self._get_json(
