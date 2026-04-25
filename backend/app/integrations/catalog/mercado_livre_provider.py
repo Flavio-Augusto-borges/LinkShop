@@ -606,6 +606,17 @@ class MercadoLivreCatalogProvider(BaseCatalogProvider):
             if not product_id or not title:
                 continue
 
+            buy_box_winner = raw_product.get("buy_box_winner") if isinstance(raw_product.get("buy_box_winner"), dict) else {}
+            winner_item_id = self._normalize_reference_id(buy_box_winner.get("item_id"))
+            price = self._to_decimal(buy_box_winner.get("price"))
+
+            if not self._is_catalog_product_search_result_buyable(
+                raw_product,
+                winner_item_id=winner_item_id,
+                price=price,
+            ):
+                continue
+
             items.append(
                 CatalogSearchItem(
                     marketplace=self.marketplace,
@@ -617,13 +628,33 @@ class MercadoLivreCatalogProvider(BaseCatalogProvider):
                     or self._build_fallback_product_url(product_id, reference_type="product"),
                     brand=self._extract_brand_from_attributes(raw_product.get("attributes")),
                     condition=self._normalize_optional_text(raw_product.get("condition")),
-                    currency_id=self._normalize_optional_text((raw_product.get("buy_box_winner") or {}).get("currency_id")) or "BRL",
-                    price=self._to_decimal((raw_product.get("buy_box_winner") or {}).get("price")),
-                    original_price=self._to_decimal((raw_product.get("buy_box_winner") or {}).get("original_price")),
+                    currency_id=self._normalize_optional_text(buy_box_winner.get("currency_id")) or "BRL",
+                    price=price,
+                    original_price=self._to_decimal(buy_box_winner.get("original_price")),
                 )
             )
 
         return items
+
+    def _is_catalog_product_search_result_buyable(
+        self,
+        raw_product: dict,
+        *,
+        winner_item_id: str | None,
+        price: Decimal | None,
+    ) -> bool:
+        status = self._normalize_optional_text(raw_product.get("status")) or "active"
+        if status != "active":
+            return False
+
+        permalink = self._normalize_optional_text(raw_product.get("permalink"))
+        if not winner_item_id and not permalink:
+            return False
+
+        if price is None or price <= 0:
+            return False
+
+        return True
 
     def _rank_search_results(
         self,

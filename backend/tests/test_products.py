@@ -28,7 +28,7 @@ def test_products_list_is_paginated(client: TestClient) -> None:
     assert "meta" in payload
     assert payload["meta"]["page"] == 1
     assert payload["meta"]["page_size"] == 1
-    assert payload["meta"]["total"] == 4
+    assert payload["meta"]["total"] == 2
     assert len(payload["data"]) == 1
     assert payload["data"][0]["slug"] == "iphone-15-128gb"
 
@@ -57,10 +57,40 @@ def test_offers_ranking_prefers_quality_not_only_lowest_price(client: TestClient
     assert response.status_code == 200
 
     payload = response.json()
-    assert len(payload) >= 2
+    assert len(payload) == 1
     assert payload[0]["id"] == "offer-1"
     assert payload[0]["ranking_score"] is not None
     assert payload[0]["ranking_reason"]
+    assert all(offer["availability"] != "out_of_stock" for offer in payload)
+
+
+def test_catalog_search_hides_products_without_publicly_available_offers(client: TestClient, db_session: Session) -> None:
+    db_session.add(
+        build_offer(
+            id="offer-product-iphone-15-128-out-stock",
+            product_id="product-iphone-15-128",
+            store_id="store-mercado-livre",
+            external_offer_id="offer-product-iphone-15-128-out-stock-ext",
+            title="Apple iPhone 15 128GB sem estoque",
+            seller_name="Mercado Livre",
+            affiliate_url="https://www.mercadolivre.com.br/",
+            landing_url="https://www.mercadolivre.com.br/",
+            price="3999.00",
+            original_price="4299.00",
+            availability="out_of_stock",
+            is_featured=True,
+        )
+    )
+    db_session.commit()
+
+    response = client.get("/api/products/search?q=iphone")
+
+    assert response.status_code == 200
+    payload = response.json()
+    slugs = [item["product"]["slug"] for item in payload["items"]]
+
+    assert "iphone-15-128gb" in slugs
+    assert "apple-iphone-15-128gb" not in slugs
 
 
 def test_admin_ranking_preview_endpoint(client: TestClient) -> None:

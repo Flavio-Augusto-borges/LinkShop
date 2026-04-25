@@ -159,7 +159,14 @@ class OfferRankingService:
     def _freshness_component(offer: Offer, now: datetime) -> float:
         if offer.last_synced_at is None:
             return 20.0
-        age_hours = max(0.0, (now - offer.last_synced_at).total_seconds() / 3600.0)
+
+        last_synced_at = offer.last_synced_at
+        if last_synced_at.tzinfo is None:
+            last_synced_at = last_synced_at.replace(tzinfo=timezone.utc)
+        else:
+            last_synced_at = last_synced_at.astimezone(timezone.utc)
+
+        age_hours = max(0.0, (now - last_synced_at).total_seconds() / 3600.0)
         if age_hours <= 24:
             return 100.0
         if age_hours >= 168:

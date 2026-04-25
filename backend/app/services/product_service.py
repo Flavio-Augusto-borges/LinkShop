@@ -22,9 +22,11 @@ class ProductService:
         stmt = (
             select(Product)
             .where(Product.is_active.is_(True))
+            .options(selectinload(Product.offers))
             .order_by(Product.popularity_score.desc(), Product.name.asc())
         )
-        return list(db.scalars(stmt).all())
+        products = list(db.scalars(stmt).unique().all())
+        return [product for product in products if ProductService._get_publicly_visible_offers(product.offers)]
 
     @staticmethod
     def get_product_by_id(db: Session, product_id: str) -> Product | None:
@@ -35,9 +37,7 @@ class ProductService:
         )
         product = db.scalar(stmt)
         if product:
-            active_offers = [offer for offer in product.offers if offer.is_active]
-            inactive_offers = [offer for offer in product.offers if not offer.is_active]
-            product.offers = OfferRankingService.rank_offers(active_offers) + inactive_offers
+            product.offers = OfferRankingService.rank_offers(ProductService._get_publicly_visible_offers(product.offers))
         return product
 
     @staticmethod
@@ -49,9 +49,7 @@ class ProductService:
         )
         product = db.scalar(stmt)
         if product:
-            active_offers = [offer for offer in product.offers if offer.is_active]
-            inactive_offers = [offer for offer in product.offers if not offer.is_active]
-            product.offers = OfferRankingService.rank_offers(active_offers) + inactive_offers
+            product.offers = OfferRankingService.rank_offers(ProductService._get_publicly_visible_offers(product.offers))
         return product
 
     @staticmethod
@@ -79,7 +77,11 @@ class ProductService:
             stmt = stmt.where(Product.id.in_(product_ids))
 
         products = list(db.scalars(stmt).unique().all())
-        items = [ProductService._build_catalog_item(product) for product in products]
+        items = [
+            item
+            for item in (ProductService._build_catalog_item(product) for product in products)
+            if item is not None
+        ]
         filtered_items = ProductService._filter_catalog_items(
             items,
             query=query,
@@ -93,7 +95,7 @@ class ProductService:
 
         start_index = max((page - 1) * page_size, 0)
         paginated_items = sorted_items[start_index : start_index + page_size]
-        available_categories = sorted({product.category for product in products})
+        available_categories = sorted({item["product"].category for item in filtered_items or items})
         available_stores = list(
             db.scalars(select(Store).where(Store.is_active.is_(True)).order_by(Store.name.asc())).all()
         )
@@ -108,8 +110,11 @@ class ProductService:
         }
 
     @staticmethod
-    def _build_catalog_item(product: Product) -> dict:
-        offers = OfferRankingService.rank_offers([offer for offer in product.offers if offer.is_active])
+    def _build_catalog_item(product: Product) -> dict | None:
+        offers = OfferRankingService.rank_offers(ProductService._get_publicly_visible_offers(product.offers))
+        if not offers:
+            return None
+
         lowest_price = min((offer.price for offer in offers), default=Decimal("0.00"))
         highest_price = max((offer.price for offer in offers), default=Decimal("0.00"))
         best_offer = offers[0] if offers else None
@@ -130,6 +135,27 @@ class ProductService:
             "best_discount_percentage": best_discount_percentage,
             "store_ids": list(dict.fromkeys(offer.store.code for offer in offers)),
         }
+
+    @staticmethod
+    def _get_publicly_visible_offers(offers: list[Offer]) -> list[Offer]:
+        return [offer for offer in offers if ProductService._is_offer_publicly_visible(offer)]
+
+    @staticmethod
+    def _is_offer_publicly_visible(offer: Offer) -> bool:
+        if not offer.is_active:
+            return False
+
+        if offer.availability == "out_of_stock":
+            return False
+
+        if offer.price is None or offer.price <= Decimal("0.00"):
+            return False
+
+        destination_url = offer.affiliate_url or offer.landing_url or offer.product_url
+        if not destination_url or not str(destination_url).strip():
+            return False
+
+        return True
 
     @staticmethod
     def _filter_catalog_items(

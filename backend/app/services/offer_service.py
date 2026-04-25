@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.models.offer import Offer
 from app.services.offer_ranking_service import OfferRankingService
+from app.services.product_service import ProductService
 
 
 class OfferService:
@@ -18,7 +19,11 @@ class OfferService:
         if product_id:
             stmt = stmt.where(Offer.product_id == product_id)
 
-        offers = list(db.scalars(stmt).unique().all())
+        offers = [
+            offer
+            for offer in db.scalars(stmt).unique().all()
+            if ProductService._is_offer_publicly_visible(offer)
+        ]
 
         if product_id:
             return OfferRankingService.rank_offers(offers)
