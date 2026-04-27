@@ -1,6 +1,8 @@
 import json
 import math
+import logging
 import re
+import unicodedata
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
@@ -32,6 +34,14 @@ class MercadoLivreSearchContext:
 class MercadoLivreCatalogProvider(BaseCatalogProvider):
     provider_name = "mercado-livre-catalog"
     marketplace = "mercado-livre"
+    _page_availability_cache: dict[str, bool | None] = {}
+    _UNAVAILABLE_PAGE_MARKERS = (
+        "este produto esta indisponivel",
+        "por favor escolha outra variacao",
+        "por favor escolha outra variacao.",
+        "escolha outra variacao",
+        "produto indisponivel",
+    )
     _ACCESSORY_TERMS = {
         "acessorio",
         "acessorios",
@@ -63,6 +73,7 @@ class MercadoLivreCatalogProvider(BaseCatalogProvider):
         "veiculo",
         "veiculos",
     }
+    logger = logging.getLogger("linkshop.mercado_livre")
 
     def search_products(
         self,
@@ -100,6 +111,7 @@ class MercadoLivreCatalogProvider(BaseCatalogProvider):
                 search_context=search_context,
                 limit=requested_limit,
             )
+            items = self._filter_confirmed_unavailable_catalog_items(items)
             return CatalogSearchResult(
                 provider=self.provider_name,
                 query=normalized_query,
@@ -632,6 +644,75 @@ class MercadoLivreCatalogProvider(BaseCatalogProvider):
             )
 
         return items
+
+    def _filter_confirmed_unavailable_catalog_items(self, items: list[CatalogSearchItem]) -> list[CatalogSearchItem]:
+        if not items:
+            return items
+
+        kept_items: list[CatalogSearchItem] = []
+        before_count = len(items)
+        removed_count = 0
+
+        for item in items:
+            canonical_url = self._normalize_optional_text(item.canonical_url)
+            if not canonical_url or "/p/" not in canonical_url.lower():
+                kept_items.append(item)
+                continue
+
+            try:
+                availability = self._validate_catalog_product_page_availability(canonical_url)
+            except Exception as exc:  # noqa: BLE001 - keep search permissive
+                self.logger.warning(
+                    "Mercado Livre availability validation failed url=%s reason=%s action=kept",
+                    canonical_url,
+                    exc.__class__.__name__,
+                )
+                kept_items.append(item)
+                continue
+
+            if availability is False:
+                removed_count += 1
+                self.logger.info(
+                    "Mercado Livre availability validation url=%s availability=unavailable action=removed",
+                    canonical_url,
+                )
+                continue
+
+            self.logger.info(
+                "Mercado Livre availability validation url=%s availability=%s action=kept",
+                canonical_url,
+                "available" if availability is True else "unknown",
+            )
+            kept_items.append(item)
+
+        self.logger.info(
+            "Mercado Livre availability validation summary before=%s after=%s removed=%s",
+            before_count,
+            len(kept_items),
+            removed_count,
+        )
+        return kept_items
+
+    def _validate_catalog_product_page_availability(self, url: str) -> bool | None:
+        cached = self._page_availability_cache.get(url)
+        if cached is not None or url in self._page_availability_cache:
+            return cached
+
+        html, _resolved_url = AdminProductImportService._fetch_html_with_redirects(url)
+        normalized_html = self._normalize_page_text(html)
+        if any(marker in normalized_html for marker in self._UNAVAILABLE_PAGE_MARKERS):
+            self._page_availability_cache[url] = False
+            return False
+
+        self._page_availability_cache[url] = None
+        return None
+
+    def _normalize_page_text(self, value: str) -> str:
+        normalized = unicodedata.normalize("NFKD", value)
+        normalized = normalized.encode("ascii", "ignore").decode("ascii")
+        normalized = normalized.lower()
+        normalized = re.sub(r"\s+", " ", normalized)
+        return normalized.strip()
 
     def _rank_search_results(
         self,
