@@ -89,73 +89,33 @@ class MercadoLivreCatalogProvider(BaseCatalogProvider):
         requested_page = max(1, page)
         requested_offset = (requested_page - 1) * requested_limit
         search_context = self._discover_search_context(normalized_query, access_token=access_token)
-        if access_token:
-            catalog_fetch_limit, catalog_fetch_offset = self._build_catalog_rerank_window(
-                requested_limit=requested_limit,
-                requested_page=requested_page,
-            )
-            catalog_search_path = self._build_catalog_search_path(
-                query=normalized_query,
-                limit=catalog_fetch_limit,
-                offset=catalog_fetch_offset,
-                search_context=search_context,
-            )
-            catalog_payload = self._get_json(
-                catalog_search_path,
-                access_token=access_token,
-            )
-            catalog_items = self._parse_catalog_product_search_results(catalog_payload)
-            total = self._extract_total_from_paging(catalog_payload, fallback=len(catalog_items))
-            total_pages = max(1, math.ceil(total / requested_limit)) if total else 1
-            items = self._rank_search_results(
-                query=normalized_query,
-                items=catalog_items,
-                search_context=search_context,
-                limit=catalog_fetch_limit,
-            )
-            items = self._resolve_catalog_display_items(items, access_token=access_token)
-            items = self._slice_catalog_reranked_page(
-                items=items,
-                requested_limit=requested_limit,
-                requested_offset=requested_offset,
-                catalog_fetch_offset=catalog_fetch_offset,
-            )
-            return CatalogSearchResult(
-                provider=self.provider_name,
-                query=normalized_query,
-                page=requested_page,
-                page_size=requested_limit,
-                total=total,
-                total_pages=total_pages,
-                items=items,
-            )
 
         try:
             marketplace_payload = self._get_json(
-                f"/sites/{settings.mercado_livre_site_id}/search?q={quote(normalized_query)}&buying_mode=buy_it_now&limit={requested_limit}&offset={requested_offset}",
+                f"/sites/{settings.mercado_livre_site_id}/search?q={quote(normalized_query)}&buying_mode=buy_it_now&status=active&limit={requested_limit}&offset={requested_offset}",
                 access_token=access_token,
             )
         except ExternalServiceError:
             raise
-        else:
-            marketplace_items = self._parse_marketplace_search_results(marketplace_payload)
-            total = self._extract_total_from_paging(marketplace_payload, fallback=len(marketplace_items))
-            total_pages = max(1, math.ceil(total / requested_limit)) if total else 1
-            items = self._rank_search_results(
-                query=normalized_query,
-                items=marketplace_items,
-                search_context=search_context,
-                limit=requested_limit,
-            )
-            return CatalogSearchResult(
-                provider=self.provider_name,
-                query=normalized_query,
-                page=requested_page,
-                page_size=requested_limit,
-                total=total,
-                total_pages=total_pages,
-                items=items,
-            )
+
+        marketplace_items = self._parse_marketplace_search_results(marketplace_payload)
+        total = self._extract_total_from_paging(marketplace_payload, fallback=len(marketplace_items))
+        total_pages = max(1, math.ceil(total / requested_limit)) if total else 1
+        items = self._rank_search_results(
+            query=normalized_query,
+            items=marketplace_items,
+            search_context=search_context,
+            limit=requested_limit,
+        )
+        return CatalogSearchResult(
+            provider=self.provider_name,
+            query=normalized_query,
+            page=requested_page,
+            page_size=requested_limit,
+            total=total,
+            total_pages=total_pages,
+            items=items,
+        )
 
     def fetch_product_details(
         self,
@@ -776,14 +736,6 @@ class MercadoLivreCatalogProvider(BaseCatalogProvider):
         if product_status != "active":
             self.logger.info(
                 "Mercado Livre strict availability external_id=%s decision=rejected reason=inactive_product",
-                item.external_id,
-            )
-            return None
-
-        children_ids = product.get("children_ids")
-        if isinstance(children_ids, list) and children_ids:
-            self.logger.info(
-                "Mercado Livre strict availability external_id=%s decision=rejected reason=parent_product",
                 item.external_id,
             )
             return None
