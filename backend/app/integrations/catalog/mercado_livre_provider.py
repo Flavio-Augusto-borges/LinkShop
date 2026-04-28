@@ -561,8 +561,8 @@ class MercadoLivreCatalogProvider(BaseCatalogProvider):
             if not item_id or not title:
                 continue
 
-            status = self._normalize_optional_text(raw_item.get("status")) or "active"
-            if status != "active":
+            status = self._normalize_optional_text(raw_item.get("status"))
+            if not status or status != "active":
                 continue
 
             available_quantity = self._to_int(raw_item.get("available_quantity"))
@@ -571,6 +571,10 @@ class MercadoLivreCatalogProvider(BaseCatalogProvider):
 
             buying_mode = self._normalize_optional_text(raw_item.get("buying_mode"))
             if buying_mode and buying_mode != "buy_it_now":
+                continue
+
+            price = self._to_decimal(raw_item.get("price"))
+            if price is None or price <= 0:
                 continue
 
             items.append(
@@ -585,7 +589,7 @@ class MercadoLivreCatalogProvider(BaseCatalogProvider):
                     brand=self._extract_brand_from_attributes(raw_item.get("attributes")),
                     condition=self._normalize_optional_text(raw_item.get("condition")),
                     currency_id=self._normalize_optional_text(raw_item.get("currency_id")) or "BRL",
-                    price=self._to_decimal(raw_item.get("price")),
+                    price=price,
                     original_price=self._to_decimal(raw_item.get("original_price")),
                 )
             )
