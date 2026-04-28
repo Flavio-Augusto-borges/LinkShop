@@ -642,6 +642,9 @@ class MercadoLivreCatalogProvider(BaseCatalogProvider):
             buy_box_winner = raw_product.get("buy_box_winner") if isinstance(raw_product.get("buy_box_winner"), dict) else {}
             price = self._to_decimal(buy_box_winner.get("price"))
 
+            if not buy_box_winner or price is None or price <= 0:
+                continue
+
             items.append(
                 CatalogSearchItem(
                     marketplace=self.marketplace,
@@ -805,15 +808,15 @@ class MercadoLivreCatalogProvider(BaseCatalogProvider):
             self._normalize_reference_id(buy_box_winner.get("item_id"))
             or (buy_box_price is not None and buy_box_price > 0)
         )
-        if has_buy_box_signal:
-            confidence = "high"
-            reason = "buy_box_winner"
-        elif isinstance(product.get("pickers"), list) and product.get("pickers"):
-            confidence = "moderate"
-            reason = "active_child_with_pickers"
-        else:
-            confidence = "neutral"
-            reason = "active_child_product"
+        if not has_buy_box_signal:
+            self.logger.info(
+                "Mercado Livre strict availability external_id=%s decision=rejected reason=no_buy_box_signal",
+                item.external_id,
+            )
+            return None
+
+        confidence = "high"
+        reason = "buy_box_winner"
         resolved_item = item.model_copy(
             update={
                 "canonical_url": canonical_url,
