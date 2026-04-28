@@ -94,19 +94,21 @@ class MercadoLivreOAuthService:
 
     @classmethod
     def resolve_access_token(cls, db: Session) -> str | None:
+        connection = cls._get_connection(db)
+        if connection and connection.access_token:
+            expires_at = cls._as_aware_utc(connection.access_token_expires_at)
+            if expires_at and expires_at <= datetime.now(timezone.utc) + timedelta(seconds=60):
+                try:
+                    connection = cls.refresh_connection(db)
+                except Exception:
+                    pass
+            return connection.access_token
+
         env_access_token = settings.mercado_livre_access_token.get_secret_value().strip()
         if env_access_token:
             return env_access_token
 
-        connection = cls._get_connection(db)
-        if not connection or not connection.access_token:
-            return None
-
-        expires_at = cls._as_aware_utc(connection.access_token_expires_at)
-        if expires_at and expires_at <= datetime.now(timezone.utc) + timedelta(seconds=60):
-            connection = cls.refresh_connection(db)
-
-        return connection.access_token
+        return None
 
     @classmethod
     def refresh_connection(cls, db: Session) -> IntegrationConnection:
