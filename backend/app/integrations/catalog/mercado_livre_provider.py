@@ -92,7 +92,7 @@ class MercadoLivreCatalogProvider(BaseCatalogProvider):
 
         try:
             marketplace_payload = self._get_json(
-                f"/sites/{settings.mercado_livre_site_id}/search?q={quote(normalized_query)}&buying_mode=buy_it_now&status=active&limit={requested_limit}&offset={requested_offset}",
+                f"/sites/{settings.mercado_livre_site_id}/search?q={quote(normalized_query)}&buying_mode=buy_it_now&limit={requested_limit}&offset={requested_offset}",
                 access_token=access_token,
             )
         except ExternalServiceError:
