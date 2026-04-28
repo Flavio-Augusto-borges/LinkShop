@@ -90,14 +90,15 @@ class MercadoLivreCatalogProvider(BaseCatalogProvider):
         requested_offset = (requested_page - 1) * requested_limit
         search_context = self._discover_search_context(normalized_query, access_token=access_token)
 
-        search_url = f"/sites/{settings.mercado_livre_site_id}/search?q={quote(normalized_query)}&buying_mode=buy_it_now&limit={requested_limit}&offset={requested_offset}"
-        try:
-            marketplace_payload = self._get_json(search_url, access_token=None)
-        except ExternalServiceError:
-            if access_token:
-                marketplace_payload = self._get_json(search_url, access_token=access_token)
-            else:
-                raise
+        search_url = (
+            f"/sites/{settings.mercado_livre_site_id}/search"
+            f"?q={quote(normalized_query)}"
+            f"&buying_mode=buy_it_now"
+            f"&accepts_mercadopago=true"
+            f"&limit={requested_limit}"
+            f"&offset={requested_offset}"
+        )
+        marketplace_payload = self._get_json(search_url, access_token=access_token)
 
         marketplace_items = self._parse_marketplace_search_results(marketplace_payload)
         total = self._extract_total_from_paging(marketplace_payload, fallback=len(marketplace_items))
