@@ -1,6 +1,7 @@
+import logging
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
@@ -9,6 +10,7 @@ from app.core.config import settings
 from app.core.exceptions import BusinessRuleError
 from app.services.mercado_livre_oauth_service import MercadoLivreOAuthService
 
+logger = logging.getLogger("linkshop.mercado_livre")
 
 router = APIRouter()
 
@@ -49,3 +51,16 @@ def mercado_livre_callback(
 
     query = urlencode({"oauth": "connected"})
     return RedirectResponse(url=f"{frontend_target}?{query}", status_code=302)
+
+
+@router.post("/mercado-livre/notifications")
+async def mercado_livre_notifications(request: Request) -> dict[str, str]:
+    try:
+        body = await request.json()
+        topic = body.get("topic", "unknown")
+        resource = body.get("resource", "")
+        user_id = body.get("user_id", "")
+        logger.info("Mercado Livre notification topic=%s resource=%s user_id=%s", topic, resource, user_id)
+    except Exception:
+        logger.warning("Mercado Livre notification received with non-JSON body")
+    return {"status": "ok"}

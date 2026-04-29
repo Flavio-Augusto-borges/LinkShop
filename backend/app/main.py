@@ -1,6 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy import text
 
 from app.api.error_handlers import register_error_handlers
@@ -78,6 +78,27 @@ def readiness_check() -> JSONResponse:
         },
     }
     return JSONResponse(payload, status_code=status_code)
+
+
+@app.get("/oauth/callback", tags=["oauth"], include_in_schema=False)
+def oauth_callback_alias(
+    code: str | None = Query(default=None),
+    state: str | None = Query(default=None),
+    error: str | None = Query(default=None),
+    error_description: str | None = Query(default=None),
+) -> RedirectResponse:
+    from urllib.parse import urlencode
+    params: dict[str, str] = {}
+    if code:
+        params["code"] = code
+    if state:
+        params["state"] = state
+    if error:
+        params["error"] = error
+    if error_description:
+        params["error_description"] = error_description
+    qs = f"?{urlencode(params)}" if params else ""
+    return RedirectResponse(url=f"/api/integrations/mercado-livre/callback{qs}", status_code=302)
 
 
 app.include_router(api_router, prefix="/api")
