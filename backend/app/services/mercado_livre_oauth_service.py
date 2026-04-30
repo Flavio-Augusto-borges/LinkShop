@@ -136,6 +136,23 @@ class MercadoLivreOAuthService:
         return cls._save_connection(db, token_payload=token_payload)
 
     @classmethod
+    def get_app_token(cls) -> str:
+        cls._require_oauth_configuration()
+        token_payload = cls._request_token({
+            "grant_type": "client_credentials",
+            "client_id": settings.mercado_livre_app_id.strip(),
+            "client_secret": settings.mercado_livre_client_secret.get_secret_value(),
+        })
+        access_token = str(token_payload.get("access_token") or "").strip()
+        if not access_token:
+            raise ExternalServiceError(
+                "Mercado Livre did not return an app access token",
+                code="MERCADO_LIVRE_APP_TOKEN_MISSING",
+                status_code=502,
+            )
+        return access_token
+
+    @classmethod
     def is_oauth_configured(cls) -> bool:
         return bool(
             settings.mercado_livre_app_id.strip()

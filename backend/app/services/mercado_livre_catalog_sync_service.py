@@ -22,7 +22,10 @@ class MercadoLivreCatalogSyncService:
 
     @classmethod
     def search_products(cls, db: Session, *, query: str, limit: int = 10, page: int = 1) -> CatalogSearchResult:
-        access_token = MercadoLivreOAuthService.resolve_access_token(db)
+        try:
+            access_token = MercadoLivreOAuthService.get_app_token()
+        except Exception:
+            access_token = MercadoLivreOAuthService.resolve_access_token(db)
         return cls.provider.search_products(query=query, limit=limit, page=page, access_token=access_token)
 
     @classmethod
